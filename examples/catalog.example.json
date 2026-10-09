@@ -3,6 +3,51 @@
   "ownerId": "demo-owner",
   "workspaceSlug": "demo-workspace",
   "snapshotGeneratedAt": "2026-10-09T00:00:00.000Z",
-  "aliases": [], "pullRequests": [], "ciObservations": [],
-  "presentation": { "repositories": [], "tickets": [], "report": { "excludedIssueIds": [], "familySummaries": [] } }
+  "aliases": [],
+  "pullRequests": [
+    {
+      "issueId": "DEMO-11",
+      "repository": "demo/infrastructure",
+      "number": 68,
+      "url": "https://example.test/demo/infrastructure/pull/68",
+      "baseBranch": "release-candidate",
+      "state": "open",
+      "purpose": "Enable response recovery in RC",
+      "observedAt": "2026-10-09T00:00:00.000Z"
+    },
+    {
+      "issueId": "DEMO-11",
+      "repository": "demo/infrastructure",
+      "number": 163,
+      "url": "https://example.test/demo/infrastructure/pull/163",
+      "baseBranch": "main",
+      "state": "open",
+      "purpose": "Enable the corresponding Production configuration",
+      "observedAt": "2026-10-09T00:00:00.000Z"
+    }
+  ],
+  "ciObservations": [
+    {
+      "repository": "demo/infrastructure",
+      "number": 68,
+      "headSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "observedAt": "2026-10-09T00:00:00.000Z",
+      "counts": { "passed": 4, "failed": 0, "pending": 0, "skipped": 1, "neutral": 0, "unknown": 0 }
+    },
+    {
+      "repository": "demo/infrastructure",
+      "number": 163,
+      "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "observedAt": "2026-10-09T00:00:00.000Z",
+      "counts": { "passed": 2, "failed": 0, "pending": 1, "skipped": 0, "neutral": 0, "unknown": 0 }
+    }
+  ],
+  "presentation": {
+    "repositories": [{ "repository": "demo/infrastructure", "label": "Infra", "tone": "amber" }],
+    "tickets": [
+      { "issueId": "DEMO-10", "label": "User Report", "icon": "link" },
+      { "issueId": "DEMO-11", "label": "Chat Recovery", "icon": "work" }
+    ],
+    "report": { "excludedIssueIds": [], "familySummaries": [] }
+  }
 }

@@ -18,6 +18,23 @@ test('C11 rendering treats supplied titles and memo as text; report remains loca
   assert.match(report, /DEMO-1/);
 });
 
+test('C11 shared UI uses the canonical Focus Shelf hierarchy and compact visual frame', () => {
+  const parent = { ...snapshot.issues[0], id: 'DEMO-10', uuid: '00000000-0000-4000-8000-000000000010', title: 'Synthetic user report', url: 'https://linear.example.test/demo-workspace/issue/DEMO-10', relations: [{ type: 'child', issueId: 'DEMO-11' }] };
+  const child = { ...snapshot.issues[0], id: 'DEMO-11', uuid: '00000000-0000-4000-8000-000000000011', title: 'Synthetic engineering work', url: 'https://linear.example.test/demo-workspace/issue/DEMO-11', relations: [{ type: 'parent', issueId: 'DEMO-10' }] };
+  const state = {
+    config,
+    snapshot: { ...snapshot, followedIssueIds: ['DEMO-10', 'DEMO-11'], issues: [parent, child] },
+    catalog: { ...catalog, presentation: { ...catalog.presentation, tickets: [{ issueId: 'DEMO-11', label: 'Chat Recovery', icon: 'work' }] } },
+  };
+  const html = renderShelf(state);
+  assert.match(html, /Codex snapshot/);
+  assert.match(html, /focus-group/);
+  assert.match(html, /Handled by/);
+  assert.match(html, /ticket-thumbnail/);
+  assert.match(html, /status-pill/);
+  assert.doesNotMatch(html, /Saved webpages|LOCAL WORKSPACE/);
+});
+
 test('C11 report uses memo, archive and repository-qualified manual PR state', () => {
   const second = { ...snapshot.issues[0], id: 'DEMO-2', uuid: '00000000-0000-4000-8000-000000000002', title: 'Archived synthetic issue', url: 'https://linear.example.test/demo-workspace/issue/DEMO-2' };
   const pullRequest = (repository, state) => ({ issueId: 'DEMO-1', repository, number: 42, url: `https://example.test/${repository}/pull/42`, baseBranch: 'main', state, purpose: 'Synthetic delivery', observedAt: snapshot.generatedAt });

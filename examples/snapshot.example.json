@@ -4,6 +4,27 @@
   "source": { "kind": "codex-manual-refresh", "workspaceSlug": "demo-workspace" },
   "scope": "assigned-followed",
   "ownerId": "demo-owner",
-  "followedIssueIds": ["DEMO-1"],
-  "issues": [{ "id": "DEMO-1", "uuid": "00000000-0000-4000-8000-000000000001", "title": "Synthetic example", "url": "https://linear.example.test/demo-workspace/issue/DEMO-1", "status": { "name": "In Progress", "type": "started" }, "assignee": { "id": "demo-owner", "name": "Demo User" }, "relations": [], "sprint": null }]
+  "followedIssueIds": ["DEMO-10", "DEMO-11"],
+  "issues": [
+    {
+      "id": "DEMO-10",
+      "uuid": "00000000-0000-4000-8000-000000000010",
+      "title": "User report about an interrupted response",
+      "url": "https://linear.example.test/demo-workspace/issue/DEMO-10",
+      "status": { "name": "In Progress", "type": "started" },
+      "assignee": { "id": "demo-owner", "name": "Demo User" },
+      "relations": [{ "type": "child", "issueId": "DEMO-11" }],
+      "sprint": { "name": "Demo Sprint", "startDate": "2026-10-05T00:00:00.000Z", "endDate": "2026-10-16T00:00:00.000Z" }
+    },
+    {
+      "id": "DEMO-11",
+      "uuid": "00000000-0000-4000-8000-000000000011",
+      "title": "Investigate and harden response recovery",
+      "url": "https://linear.example.test/demo-workspace/issue/DEMO-11",
+      "status": { "name": "In Progress", "type": "started" },
+      "assignee": { "id": "demo-owner", "name": "Demo Engineer" },
+      "relations": [{ "type": "parent", "issueId": "DEMO-10" }],
+      "sprint": { "name": "Demo Sprint", "startDate": "2026-10-05T00:00:00.000Z", "endDate": "2026-10-16T00:00:00.000Z" }
+    }
+  ]
 }

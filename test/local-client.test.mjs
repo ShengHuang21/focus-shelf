@@ -172,6 +172,13 @@ test('C09 memo/archive/manual PR survive reload and remain profile isolated', as
   assert.equal(other.getPRStatus('demo/repository#42'), null);
 });
 
+test('C09 manual PR overlay supports the Ready for Review workflow state', async t => {
+  const client = await createLocalClient(options());
+  t.after(() => client.close());
+  client.setPRStatus('demo/repository#42', 'ready-review');
+  assert.equal(client.getPRStatus('demo/repository#42'), 'ready-review');
+});
+
 test('C09 storage failure surfaces failed save and does not claim persistence', async t => {
   const storage = memoryStorage();
   storage.setItem = () => { throw new Error('QuotaExceededError'); };

@@ -2,6 +2,8 @@
 
 Focus Shelf is a local webpage for a personal issue snapshot, browser-local memos, archive flags and manual PR status. It has no account login or external-service client. Opening, editing or reloading the page reads local files only. Refresh from Linear/GitHub is an explicit authorized Codex workflow.
 
+The shared application itself owns the canonical Focus Shelf visual frame: compact snapshot summary, neutral gray focus groups, hierarchical ticket families, status and repository badges, PR rows, Memo editing and local Archive actions. The bundled Skill only governs safe data refresh; it does not restyle or rebuild the interface. Personal data and shortcuts stay outside the repository.
+
 ## Setup
 
 Use Node 22 or later. There are no dependencies to install. Set `FOCUS_SHELF_HOME` to an absolute directory outside this repository, then run `npm start`. Open `http://localhost:8770` in a current browser with Web Locks support. Keep this fixed origin to preserve browser-local overlays. If port 8770 is occupied, startup fails with `EADDRINUSE`; it never stops another service or switches ports.
