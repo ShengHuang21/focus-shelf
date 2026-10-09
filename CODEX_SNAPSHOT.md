@@ -1,0 +1,13 @@
+# Explicit local snapshot contract
+
+This procedure requires an explicit user request and existing authorization to read the relevant external workspace. Opening or editing Focus Shelf never invokes it. No credentials, descriptions, comments, attachments, customer payloads, raw responses or error bodies belong in a snapshot.
+
+Read the external `FOCUS_SHELF_HOME/config.json`. Confirm profile identity, Linear owner and workspace. Collect the complete assigned and followed set, retaining previously followed IDs including completed issues. If complete coverage or relation evidence cannot be obtained, preserve the existing snapshot and report the gap. Do not substitute an active-only or created-by search. Do not silently unfollow an issue.
+
+Only root fields `schemaVersion`, `generatedAt`, `source`, `scope`, `ownerId`, `followedIssueIds`, `issues` are accepted. Use schema 1, canonical ISO timestamps, `source:{kind:'codex-manual-refresh',workspaceSlug}`, and `scope:'assigned-followed'`. Each issue contains only `id`, `uuid`, `title`, `url`, `status:{name,type}`, `assignee:{id,name}|null`, `relations:[{type,issueId}]`, and `sprint:{name,startDate,endDate}|null`. Maximum 100 issues. URLs must match the configured Linear workspace and issue ID. Parent/child relations must be reciprocal, acyclic and have at most one parent. Unknown fields fail validation.
+
+Write candidate input outside the repository, then run `node scripts/write-codex-snapshot.mjs INPUT.json` with the intended `FOCUS_SHELF_HOME`. The CLI accepts only input; destination is fixed. Publication acquires an exclusive external lock, rereads the latest state, validates, checks rollback/completeness, writes and syncs a temporary file, then atomically renames. Exact repeats return `unchanged`. Lock contention returns `SNAPSHOT_LOCKED`: wait for the owning writer, then retry from newly read evidence. Do not remove an unexplained stale lock automatically; diagnose ownership first. A failure after rename may already have published the new snapshot; inspect the destination before retrying.
+
+Catalog is optional. Its strict fields are demonstrated in the synthetic example and validator. Bind schema, owner, workspace and `snapshotGeneratedAt` exactly. Catalog never accepts scripts, arbitrary presentation markup or raw service payloads. PR/CI data is observational; skipped/neutral/unknown checks are distinct from passed checks. Manual browser PR status is local user annotation.
+
+Verify the local page and report what was collected, published or preserved. Snapshot refresh never changes browser-local memos, archive flags, saved webpages or manual PR status. No remote write, sending, deployment, sharing or migration is authorized by this procedure.

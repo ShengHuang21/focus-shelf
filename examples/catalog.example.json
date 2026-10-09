@@ -1,0 +1,8 @@
+{
+  "schemaVersion": 1,
+  "ownerId": "demo-owner",
+  "workspaceSlug": "demo-workspace",
+  "snapshotGeneratedAt": "2026-10-09T00:00:00.000Z",
+  "aliases": [], "pullRequests": [], "ciObservations": [],
+  "presentation": { "repositories": [], "tickets": [], "report": { "excludedIssueIds": [], "familySummaries": [] } }
+}

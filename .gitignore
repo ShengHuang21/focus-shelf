@@ -1,0 +1,9 @@
+node_modules/
+work/
+.DS_Store
+*.tmp
+*.log
+config.json
+linear-latest.json
+catalog.json
+.env
