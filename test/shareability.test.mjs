@@ -50,6 +50,16 @@ test('C11 archived tickets move into the collapsed Archive section without hidin
   assert.match(archive, />Restore</);
 });
 
+test('C11 an active child keeps a completed parent family in Current work', () => {
+  const parent = { ...snapshot.issues[0], id: 'DEMO-10', uuid: '00000000-0000-4000-8000-000000000010', title: 'Completed context parent', url: 'https://linear.example.test/demo-workspace/issue/DEMO-10', status: { name: 'Done', type: 'completed' }, relations: [{ type: 'child', issueId: 'DEMO-11' }] };
+  const child = { ...snapshot.issues[0], id: 'DEMO-11', uuid: '00000000-0000-4000-8000-000000000011', title: 'Active assigned child', url: 'https://linear.example.test/demo-workspace/issue/DEMO-11', status: { name: 'In Progress', type: 'started' }, relations: [{ type: 'parent', issueId: 'DEMO-10' }] };
+  const html = renderShelf({ config, snapshot: { ...snapshot, followedIssueIds: ['DEMO-10'], issues: [parent, child] }, catalog });
+  const current = html.slice(html.indexOf('Current work'), html.indexOf('<details id="archive-section"'));
+  assert.match(current, /Completed context parent/);
+  assert.match(current, /Active assigned child/);
+  assert.doesNotMatch(html, /<h2><span>✓<\/span>Completed<\/h2>/);
+});
+
 test('C11 report uses memo, archive and repository-qualified manual PR state', () => {
   const second = { ...snapshot.issues[0], id: 'DEMO-2', uuid: '00000000-0000-4000-8000-000000000002', title: 'Archived synthetic issue', url: 'https://linear.example.test/demo-workspace/issue/DEMO-2' };
   const pullRequest = (repository, state) => ({ issueId: 'DEMO-1', repository, number: 42, url: `https://example.test/${repository}/pull/42`, baseBranch: 'main', state, purpose: 'Synthetic delivery', observedAt: snapshot.generatedAt });

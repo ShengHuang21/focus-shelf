@@ -85,6 +85,15 @@ function activeRoots(items, children, overlays) {
   return items.flatMap(item => overlays.archived?.[item.id] ? activeRoots(children.get(item.id) ?? [], children, overlays) : [item]);
 }
 
+function familyGroupType(item, children, overlays) {
+  const visibleChildren = (children.get(item.id) ?? []).filter(child => !overlays.archived?.[child.id]);
+  const familyTypes = visibleChildren.flatMap(child => [familyGroupType(child, children, overlays)]);
+  if (item.status.type === 'started' || familyTypes.includes('started')) return 'started';
+  if (['triage', 'unstarted'].includes(item.status.type) || familyTypes.some(type => ['triage', 'unstarted'].includes(type))) return 'unstarted';
+  if (item.status.type === 'backlog' || familyTypes.includes('backlog')) return 'backlog';
+  return item.status.type;
+}
+
 export function renderShelf({ config, snapshot, catalog, overlays = {}, readOnly = true, readOnlyReason = '', saveState = 'idle' }) {
   const issues = snapshot?.issues ?? [];
   const byId = new Map(issues.map(item => [item.id, item]));
@@ -104,7 +113,7 @@ export function renderShelf({ config, snapshot, catalog, overlays = {}, readOnly
   const visibleRoots = activeRoots(roots, children, overlays);
   const pins = (config?.pins ?? []).map(pin => link(pin.url, pin.title, 'pin-link')).join('');
   const renderedGroups = groups.map(group => {
-    const items = visibleRoots.filter(item => group.types.has(item.status.type));
+    const items = visibleRoots.filter(item => group.types.has(familyGroupType(item, children, overlays)));
     if (!items.length) return '';
     return `<section class="focus-group"><h2><span>${group.symbol}</span>${group.label}</h2><div class="group-items">${items.map(item => renderIssue(item, { byId, children, catalog, overlays, readOnly, maps })).join('')}</div></section>`;
   }).join('');
