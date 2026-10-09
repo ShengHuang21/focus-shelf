@@ -3,6 +3,5 @@
   "profileId": "demo-profile",
   "linear": { "ownerId": "demo-owner", "workspaceSlug": "demo-workspace" },
   "timezone": "Asia/Tokyo",
-  "features": { "savedWebpages": true },
   "pins": [{ "id": "example", "title": "Example", "url": "https://example.test", "icon": "link" }]
 }

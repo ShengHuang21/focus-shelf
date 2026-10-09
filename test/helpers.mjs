@@ -8,7 +8,6 @@ export const config = {
   profileId: 'demo-profile',
   linear: { ownerId: 'demo-owner', workspaceSlug: 'demo-workspace' },
   timezone: 'Asia/Tokyo',
-  features: { savedWebpages: true },
   pins: [],
 };
 

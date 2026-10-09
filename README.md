@@ -1,6 +1,6 @@
 # Focus Shelf
 
-Focus Shelf is a local webpage for a personal issue snapshot, browser-local memos, archive flags, manual PR status and optional saved webpages. It has no account login or external-service client. Opening, editing or reloading the page reads local files only. Refresh from Linear/GitHub is an explicit authorized Codex workflow.
+Focus Shelf is a local webpage for a personal issue snapshot, browser-local memos, archive flags and manual PR status. It has no account login or external-service client. Opening, editing or reloading the page reads local files only. Refresh from Linear/GitHub is an explicit authorized Codex workflow.
 
 ## Setup
 
@@ -25,7 +25,7 @@ Your `profileId`, `ownerId` and `workspaceSlug` form a stable browser storage na
 
 Only one window per profile may write overlays. A second window displays read-only controls; close the writer and select “Try writer lock” to take over and load the latest saved overlays. Without Web Locks the page is read-only. Browser-local storage is tied to this browser and origin; clearing site storage removes those overlays. A storage failure is visibly reported and never acknowledged as saved.
 
-Memo changes save when leaving the text field; Archive and manual PR status save immediately. PR keys include repository and number. Saved webpages accept HTTP(S) URLs without embedded credentials, deduplicate URLs and have one optional group label. Set `features.savedWebpages` to false to hide and disable captures; existing captures remain stored. A local report uses your current memo/archive/manual PR overlays and never sends anything.
+Memo changes save when leaving the text field; Archive and manual PR status save immediately. PR keys include repository and number. A local report uses your current memo/archive/manual PR overlays and never sends anything. The shared starter intentionally does not include the unfinished saved-webpage experiment or any personal shortcut set.
 
 ## Manual snapshot refresh
 

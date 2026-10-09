@@ -33,18 +33,14 @@ test('C11 report uses memo, archive and repository-qualified manual PR state', (
   assert.match(report, /demo\/two#42[^\n]*closed/);
 });
 
-test('C11 rendering escapes memo/capture titles and removes unsafe link protocols', () => {
+test('C11 rendering escapes memo and removes unsafe link protocols', () => {
   const state = {
     config, snapshot: { ...snapshot, issues: [{ ...snapshot.issues[0], url: 'javascript:alert(1)' }] }, catalog: null,
-    overlays: {
-      memos: { 'DEMO-1': '<script>MEMO_SENTINEL</script>' },
-      captured: [{ url: 'https://example.test/article', title: '<img src=x onerror=CAPTURE_SENTINEL>', group: 'Learning' }, { url: 'javascript:alert(2)', title: 'Bad URL' }],
-    },
+    overlays: { memos: { 'DEMO-1': '<script>MEMO_SENTINEL</script>' } },
   };
   const html = renderShelf(state);
   assert.match(html, /&lt;script&gt;MEMO_SENTINEL/);
-  assert.match(html, /&lt;img src=x onerror=CAPTURE_SENTINEL/);
-  assert.doesNotMatch(html, /<script>MEMO_SENTINEL|<img src=x|href=["']javascript:|javascript:alert/);
+  assert.doesNotMatch(html, /<script>MEMO_SENTINEL|href=["']javascript:|javascript:alert/);
 });
 
 test('C11 production browser code uses local API and no Chrome/external service primitives', async () => {

@@ -10,4 +10,4 @@ Write candidate input outside the repository, then run `node scripts/write-codex
 
 Catalog is optional. Its strict fields are demonstrated in the synthetic example and validator. Bind schema, owner, workspace and `snapshotGeneratedAt` exactly. Catalog never accepts scripts, arbitrary presentation markup or raw service payloads. PR/CI data is observational; skipped/neutral/unknown checks are distinct from passed checks. Manual browser PR status is local user annotation.
 
-Verify the local page and report what was collected, published or preserved. Snapshot refresh never changes browser-local memos, archive flags, saved webpages or manual PR status. No remote write, sending, deployment, sharing or migration is authorized by this procedure.
+Verify the local page and report what was collected, published or preserved. Snapshot refresh never changes browser-local memos, archive flags or manual PR status. No remote write, sending, deployment, sharing or migration is authorized by this procedure.
