@@ -10,4 +10,6 @@ Write candidate input outside the repository, then run `node scripts/write-codex
 
 Catalog is optional. Its strict fields are demonstrated in the synthetic example and validator. Bind schema, owner, workspace and `snapshotGeneratedAt` exactly. Catalog never accepts scripts, arbitrary presentation markup or raw service payloads. PR/CI data is observational; skipped/neutral/unknown checks are distinct from passed checks. Manual browser PR status is local user annotation.
 
+Ticket topic illustrations are generated during the authorized refresh, not hardcoded in the application or keyed to known ticket IDs. For a ticket whose verified title and task context support a useful recognition aid, add one `presentation.tickets` entry with exactly `issueId`, a short `label`, a plain-text `glyph`, one allowlisted `tone`, and an evidence-aligned `description`. The Skill chooses these values from current task meaning. It must not embed SVG/HTML, URLs, scripts, customer content or delivery-status claims. If the topic is unclear, omit the entry and let the application use its neutral no-illustration layout.
+
 Verify the local page and report what was collected, published or preserved. Snapshot refresh never changes browser-local memos, archive flags or manual PR status. No remote write, sending, deployment, sharing or migration is authorized by this procedure.

@@ -13,7 +13,7 @@ Keep credentials in the authorized connector or logged-in CLI session; never wri
 
 1. Read the starter's CODEX_SNAPSHOT.md and external FOCUS_SHELF_HOME/config.json. Confirm the requested profile, owner and workspace; do not use personal defaults.
 2. Through already authorized capabilities, obtain the complete current assigned plus followed issue set and relations. Retain prior followed IDs including Done items. If completeness is unavailable, preserve the previous local snapshot and explain the gap.
-3. Build the strict allowlisted candidate outside the repository. Never include descriptions, comments, attachments, customer data, credentials, raw service responses or error bodies.
+3. Build the strict allowlisted candidate outside the repository. Never include issue descriptions, comments, attachments, customer data, credentials, raw service responses or error bodies. Generate optional ticket topic illustrations from the verified title and task context: `presentation.tickets` contains `issueId`, a short `label`, a plain-text `glyph`, an allowlisted `tone`, and a concise evidence-aligned `description`. Do not hardcode known ticket IDs or infer completion/status from an illustration. Omit uncertain illustrations; never emit SVG/HTML, URLs or executable markup.
 4. Run `node scripts/write-codex-snapshot.mjs INPUT.json` with the correct FOCUS_SHELF_HOME. Destination is fixed and external; respect lock contention and reread latest evidence before retrying.
 5. Verify local `http://localhost:8770` through the running starter and report publication evidence. If occupied, do not stop an existing service or change origin. Memo, Archive and manual PR status are browser-local and must remain unchanged by refresh.
 

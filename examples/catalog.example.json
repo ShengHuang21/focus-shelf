@@ -45,8 +45,8 @@
   "presentation": {
     "repositories": [{ "repository": "demo/infrastructure", "label": "Infra", "tone": "amber" }],
     "tickets": [
-      { "issueId": "DEMO-10", "label": "User Report", "icon": "link" },
-      { "issueId": "DEMO-11", "label": "Chat Recovery", "icon": "work" }
+      { "issueId": "DEMO-10", "label": "User Report", "glyph": "💬", "tone": "red", "description": "A synthetic user-reported interruption requiring engineering follow-up" },
+      { "issueId": "DEMO-11", "label": "Chat Recovery", "glyph": "↻", "tone": "blue", "description": "Synthetic engineering work to recover interrupted responses" }
     ],
     "report": { "excludedIssueIds": [], "familySummaries": [] }
   }

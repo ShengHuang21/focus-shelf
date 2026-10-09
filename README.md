@@ -2,7 +2,7 @@
 
 Focus Shelf is a local webpage for a personal issue snapshot, browser-local memos, archive flags and manual PR status. It has no account login or external-service client. Opening, editing or reloading the page reads local files only. Refresh from Linear/GitHub is an explicit authorized Codex workflow.
 
-The shared application itself owns the canonical Focus Shelf visual frame: compact snapshot summary, neutral gray focus groups, hierarchical ticket families, status and repository badges, PR rows, Memo editing and local Archive actions. The bundled Skill only governs safe data refresh; it does not restyle or rebuild the interface. Personal data and shortcuts stay outside the repository.
+The shared application itself owns the canonical Focus Shelf visual frame: compact snapshot summary, neutral gray focus groups, hierarchical ticket families, status and repository badges, PR rows, Memo editing and local Archive actions. The bundled Skill governs safe data refresh and may generate each ticket's optional topic illustration as validated plain presentation data; it does not restyle or rebuild the interface. Illustrations are derived from the current verified ticket meaning, not hardcoded by ticket ID. Personal data and shortcuts stay outside the repository.
 
 ## Setup
 

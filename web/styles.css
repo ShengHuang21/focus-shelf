@@ -45,6 +45,12 @@ nav { display: flex; flex-wrap: wrap; gap: 8px; min-width: 0; }
 .ticket-ownership { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 4px; color: var(--muted); font-size: .7rem; }
 .ticket-heading { display: flex; align-items: center; gap: 10px; min-width: 0; }
 .ticket-thumbnail { flex: 0 0 96px; min-height: 68px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; padding: 6px 4px; border: 1px solid #d8dfed; border-radius: 8px; color: #354d91; background: #eef4ff; text-align: center; font-size: .68rem; font-weight: 750; }
+.ticket-thumbnail-neutral { color: #515564; background: #f3f4f6; }
+.ticket-thumbnail-blue { color: #354d91; background: #eef4ff; }
+.ticket-thumbnail-purple { color: #6340a8; background: #f3efff; }
+.ticket-thumbnail-green { color: #0b6b52; background: #edf7f5; }
+.ticket-thumbnail-amber { color: #9a3412; background: #fff7ed; }
+.ticket-thumbnail-red { color: #933d33; background: #fff3f0; }
 .ticket-thumbnail-icon { font-size: 1.35rem; line-height: 1; }
 .ticket-main { flex: 1; min-width: 0; }
 .ticket-row { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 7px; min-width: 0; }

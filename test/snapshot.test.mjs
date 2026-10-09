@@ -66,6 +66,22 @@ test('C04 catalog binds owner, workspace, schema and exact snapshot time', () =>
   ]) assert.throws(() => validateCatalog(value, config, snapshot), /INVALID_CATALOG/);
 });
 
+test('C04 ticket illustrations are Skill-produced plain presentation data', () => {
+  const ticket = { issueId: 'DEMO-1', label: 'Recovery', glyph: '↻', tone: 'blue', description: 'Synthetic recovery topic illustration' };
+  const value = { ...catalog, presentation: { ...catalog.presentation, tickets: [ticket] } };
+  assert.deepEqual(validateCatalog(value, config, snapshot), value);
+  for (const invalid of [
+    { ...ticket, glyph: '<svg>' },
+    { ...ticket, glyph: '' },
+    { ...ticket, tone: 'custom-css' },
+    { ...ticket, description: '' },
+    { ...ticket, javascript: 'alert(1)' },
+  ]) {
+    const candidate = { ...catalog, presentation: { ...catalog.presentation, tickets: [invalid] } };
+    assert.throws(() => validateCatalog(candidate, config, snapshot), /INVALID_CATALOG/);
+  }
+});
+
 test('C06 writer rejects rollback and divergent same-time publication, allows exact repeat', async t => {
   const home = await temporaryHome(t);
   await writeFile(join(home, 'config.json'), JSON.stringify(config));

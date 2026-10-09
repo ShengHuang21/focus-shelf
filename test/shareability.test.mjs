@@ -24,7 +24,7 @@ test('C11 shared UI uses the canonical Focus Shelf hierarchy and compact visual 
   const state = {
     config,
     snapshot: { ...snapshot, followedIssueIds: ['DEMO-10', 'DEMO-11'], issues: [parent, child] },
-    catalog: { ...catalog, presentation: { ...catalog.presentation, tickets: [{ issueId: 'DEMO-11', label: 'Chat Recovery', icon: 'work' }] } },
+    catalog: { ...catalog, presentation: { ...catalog.presentation, tickets: [{ issueId: 'DEMO-11', label: 'Chat Recovery', glyph: '↻', tone: 'blue', description: 'Synthetic recovery topic illustration' }] } },
   };
   const html = renderShelf(state);
   assert.match(html, /Codex snapshot/);
