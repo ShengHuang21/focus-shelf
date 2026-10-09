@@ -71,7 +71,7 @@ function renderReferences(item, byId) {
 function renderIssue(item, context) {
   const { byId, children, catalog, overlays, readOnly, maps, nested = false } = context;
   const archived = Boolean(overlays.archived?.[item.id]);
-  const childItems = (children.get(item.id) ?? []).filter(child => context.showArchived || !overlays.archived?.[child.id]);
+  const childItems = (children.get(item.id) ?? []).filter(child => !overlays.archived?.[child.id]);
   const presentation = maps.tickets.get(item.id);
   const icon = { link: '↗', code: '</>', book: '▤', work: '⚙', home: '⌂' }[presentation?.icon] ?? '●';
   const memo = overlays.memos?.[item.id] ?? '';
@@ -81,7 +81,11 @@ function renderIssue(item, context) {
   return `<article class="ticket-card ticket-family">${body}<div class="handled-by">Handled by ↓</div><div class="ticket-children">${childItems.map(child => renderIssue(child, { ...context, nested: true })).join('')}</div></article>`;
 }
 
-export function renderShelf({ config, snapshot, catalog, overlays = {}, readOnly = true, readOnlyReason = '', saveState = 'idle', showArchived = false }) {
+function activeRoots(items, children, overlays) {
+  return items.flatMap(item => overlays.archived?.[item.id] ? activeRoots(children.get(item.id) ?? [], children, overlays) : [item]);
+}
+
+export function renderShelf({ config, snapshot, catalog, overlays = {}, readOnly = true, readOnlyReason = '', saveState = 'idle' }) {
   const issues = snapshot?.issues ?? [];
   const byId = new Map(issues.map(item => [item.id, item]));
   const children = new Map();
@@ -94,16 +98,19 @@ export function renderShelf({ config, snapshot, catalog, overlays = {}, readOnly
   }
   const roots = issues.filter(item => !childIds.has(item.id));
   const maps = presentationMaps(catalog);
-  const visibleCount = issues.filter(item => showArchived || !overlays.archived?.[item.id]).length;
-  const archivedCount = issues.filter(item => overlays.archived?.[item.id]).length;
+  const archivedItems = issues.filter(item => overlays.archived?.[item.id]);
+  const archivedCount = archivedItems.length;
+  const visibleCount = issues.length - archivedCount;
+  const visibleRoots = activeRoots(roots, children, overlays);
   const pins = (config?.pins ?? []).map(pin => link(pin.url, pin.title, 'pin-link')).join('');
   const renderedGroups = groups.map(group => {
-    const items = roots.filter(item => group.types.has(item.status.type) && (showArchived || !overlays.archived?.[item.id] || (children.get(item.id) ?? []).some(child => !overlays.archived?.[child.id])));
+    const items = visibleRoots.filter(item => group.types.has(item.status.type));
     if (!items.length) return '';
-    return `<section class="focus-group"><h2><span>${group.symbol}</span>${group.label}</h2><div class="group-items">${items.map(item => renderIssue(item, { byId, children, catalog, overlays, readOnly, maps, showArchived })).join('')}</div></section>`;
+    return `<section class="focus-group"><h2><span>${group.symbol}</span>${group.label}</h2><div class="group-items">${items.map(item => renderIssue(item, { byId, children, catalog, overlays, readOnly, maps })).join('')}</div></section>`;
   }).join('');
   const empty = '<section class="empty"><h2>Your shelf is ready</h2><p>No issues yet. Configure your local profile and explicitly ask Codex to refresh a snapshot.</p></section>';
-  return `<header class="snapshot-summary"><span>Codex snapshot ${escape(formatSnapshot(snapshot?.generatedAt, config?.timezone))} · on-demand Codex refresh</span><span>${visibleCount} items${archivedCount ? ` · ${archivedCount} archived` : ''}</span></header><div class="top-actions"><nav>${pins}</nav><div class="action-buttons"><span class="local-status">${readOnly ? `Read-only · ${escape(readOnlyReason || 'Configure a profile')}` : `Local saves · ${escape(saveState)}`}</span><label><input id="show-archived" type="checkbox" ${showArchived ? 'checked' : ''}> Show archived</label><button id="reload">Reload snapshot</button><button id="report">Create report</button>${readOnly ? '<button id="takeover">Try writer lock</button>' : ''}</div></div>${renderedGroups || empty}<section id="report-panel" hidden><h2>Local report</h2><textarea id="report-text" readonly></textarea></section><footer>Configuration and snapshots stay on this computer. Opening or editing the shelf does not refresh external services.</footer>`;
+  const archive = `<details id="archive-section" class="archive-section"><summary>Archive · ${archivedCount}</summary><p>Only manually archived tickets appear here.</p><div class="archive-list">${archivedItems.map(item => renderIssue(item, { byId, children: new Map(), catalog, overlays, readOnly, maps })).join('')}</div></details>`;
+  return `<header class="snapshot-summary"><span>Codex snapshot ${escape(formatSnapshot(snapshot?.generatedAt, config?.timezone))} · on-demand Codex refresh</span><span>${visibleCount} items${archivedCount ? ` · ${archivedCount} archived` : ''}</span></header><div class="top-actions"><nav>${pins}</nav><div class="action-buttons"><span class="local-status">${readOnly ? `Read-only · ${escape(readOnlyReason || 'Configure a profile')}` : `Local saves · ${escape(saveState)}`}</span><button id="reload">Reload snapshot</button><button id="report">Create report</button>${readOnly ? '<button id="takeover">Try writer lock</button>' : ''}</div></div>${renderedGroups || empty}${archive}<section id="report-panel" hidden><h2>Local report</h2><textarea id="report-text" readonly></textarea></section><footer>Configuration and snapshots stay on this computer. Opening or editing the shelf does not refresh external services.</footer>`;
 }
 
 export function createReport({ snapshot, catalog, overlays = {} }) {
@@ -117,7 +124,6 @@ export function createReport({ snapshot, catalog, overlays = {} }) {
 if (typeof document !== 'undefined') {
   let shelf;
   let client;
-  let showArchived = false;
   const main = document.querySelector('main');
   async function reload() {
     const response = await fetch('/api/shelf', { cache: 'no-store' });
@@ -128,11 +134,10 @@ if (typeof document !== 'undefined') {
     shelf = next; render();
   }
   function render() {
-    main.innerHTML = renderShelf({ ...shelf, overlays: client.getOverlays(), readOnly: client.readOnly, readOnlyReason: client.readOnlyReason, saveState: client.saveState, showArchived });
+    main.innerHTML = renderShelf({ ...shelf, overlays: client.getOverlays(), readOnly: client.readOnly, readOnlyReason: client.readOnlyReason, saveState: client.saveState });
     const errors = () => { const node = main.querySelector('.local-status'); node.textContent = `Save failed · ${client.readOnlyReason || 'Local storage or input unavailable'}`; node.classList.add('error'); };
     const action = fn => { try { fn(); render(); } catch { errors(); } };
     main.querySelector('#reload').onclick = () => reload().catch(errors);
-    main.querySelector('#show-archived').onchange = event => { showArchived = event.target.checked; render(); };
     main.querySelector('#takeover')?.addEventListener('click', async () => { await client.acquireWriter(); render(); });
     main.querySelectorAll('[data-memo]').forEach(node => { node.onchange = () => action(() => client.setMemo(node.dataset.memo, node.value)); });
     main.querySelectorAll('[data-archive]').forEach(node => { node.onclick = () => action(() => client.setArchived(node.dataset.archive, !client.isArchived(node.dataset.archive))); });

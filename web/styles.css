@@ -96,6 +96,11 @@ nav { display: flex; flex-wrap: wrap; gap: 8px; min-width: 0; }
 .case-details summary { width: fit-content; cursor: pointer; }
 .reference-list { display: grid; gap: 4px; padding: 7px 0 0 12px; }
 .reference-type { text-transform: capitalize; }
+.archive-section { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line); }
+.archive-section > summary { width: fit-content; padding: 4px 0; cursor: pointer; font-size: .82rem; font-weight: 700; }
+.archive-section > p { margin: 4px 0 9px; color: var(--muted); font-size: .7rem; }
+.archive-list { display: grid; gap: 8px; }
+.archive-list:empty { display: none; }
 .empty, #report-panel { padding: 18px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
 .empty h2, #report-panel h2 { margin-top: 0; font-size: .9rem; }
 #report-text { width: 100%; min-height: 180px; padding: 9px; border: 1px solid var(--line); border-radius: 6px; resize: vertical; }

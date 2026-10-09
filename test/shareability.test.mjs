@@ -32,7 +32,22 @@ test('C11 shared UI uses the canonical Focus Shelf hierarchy and compact visual 
   assert.match(html, /Handled by/);
   assert.match(html, /ticket-thumbnail/);
   assert.match(html, /status-pill/);
-  assert.doesNotMatch(html, /Saved webpages|LOCAL WORKSPACE/);
+  assert.match(html, /Archive · 0/);
+  assert.doesNotMatch(html, /Saved webpages|LOCAL WORKSPACE|Show archived/);
+});
+
+test('C11 archived tickets move into the collapsed Archive section without hiding active children', () => {
+  const parent = { ...snapshot.issues[0], id: 'DEMO-10', uuid: '00000000-0000-4000-8000-000000000010', title: 'Synthetic parent', url: 'https://linear.example.test/demo-workspace/issue/DEMO-10', relations: [{ type: 'child', issueId: 'DEMO-11' }] };
+  const child = { ...snapshot.issues[0], id: 'DEMO-11', uuid: '00000000-0000-4000-8000-000000000011', title: 'Synthetic child', url: 'https://linear.example.test/demo-workspace/issue/DEMO-11', relations: [{ type: 'parent', issueId: 'DEMO-10' }] };
+  const state = { config, snapshot: { ...snapshot, followedIssueIds: ['DEMO-10', 'DEMO-11'], issues: [parent, child] }, catalog, overlays: { archived: { 'DEMO-10': true } } };
+  const html = renderShelf(state);
+  const current = html.slice(0, html.indexOf('<details id="archive-section"'));
+  const archive = html.slice(html.indexOf('<details id="archive-section"'));
+  assert.doesNotMatch(current, /Synthetic parent/);
+  assert.match(current, /Synthetic child/);
+  assert.match(archive, /Archive · 1/);
+  assert.match(archive, /Synthetic parent/);
+  assert.match(archive, />Restore</);
 });
 
 test('C11 report uses memo, archive and repository-qualified manual PR state', () => {
