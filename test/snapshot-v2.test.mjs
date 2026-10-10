@@ -36,6 +36,18 @@ test('v2 created seed keeps a ticket after its assignee changes', () => {
   assert.throws(() => validateSnapshot(missingCreatedSeed, config), /context unreachable/);
 });
 
+test('partial PR discovery retains verified rows without asserting complete CI', () => {
+  const value = structuredClone(catalogV2);
+  value.coverage[0].pr = 'unavailable';
+  value.coverage[0].ci = 'unavailable';
+  assert.deepEqual(validateCatalog(value, config, snapshotV2), value);
+  assert.equal(value.pullRequests.length, catalogV2.pullRequests.length);
+  const html = renderShelf({ config, snapshot: snapshotV2, catalog: value });
+  assert.ok(html.includes(`PR #${value.pullRequests[0].number}`));
+  value.coverage[0].ci = 'complete';
+  assert.throws(() => validateCatalog(value, config, snapshotV2), /incomplete PR discovery/);
+});
+
 test('duplicate status and duplicate/block relations preserve their exact meaning', () => {
   const value = structuredClone(snapshotV2);
   value.issues[3].status = { name: 'Duplicate', type: 'duplicate' };
