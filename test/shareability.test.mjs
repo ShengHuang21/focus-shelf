@@ -39,17 +39,17 @@ test('C11 Second DRI is visually quieter than the primary owner', async () => {
 });
 
 test('C11 assignee display prefers the English name and omits the Japanese duplicate', () => {
-  assert.equal(formatAssigneeName('- Zihao Ding - ディン ジハオ'), 'Zihao');
-  assert.equal(formatAssigneeName('山田 康平 - Kohei Yamada -'), 'Kohei');
-  assert.equal(formatAssigneeName('Ryuji Konishi Barros Gabriel Henrique'), 'Ryuji');
-  assert.equal(formatAssigneeName('山田 康平'), '山田 康平');
+  assert.equal(formatAssigneeName('- Alex Example - アレックス エグザンプル'), 'Alex');
+  assert.equal(formatAssigneeName('例野 太郎 - Casey Example -'), 'Casey');
+  assert.equal(formatAssigneeName('Morgan Example Long Synthetic Name'), 'Morgan');
+  assert.equal(formatAssigneeName('例野 太郎'), '例野 太郎');
 });
 
 test('C11 DRI display names keep only the first English name or the leading Kanji name', () => {
-  assert.equal(formatDriName('Spencer Ding (豪(ごう))'), 'Spencer');
-  assert.equal(formatDriName('グラガイン ジワン- Jiwan Guragain -'), 'Jiwan');
-  assert.equal(formatDriName('ラフィン - Rafeen'), 'Rafeen');
-  assert.equal(formatDriName('千田 光昭- Mitsuaki Senda -'), '千田 光昭');
+  assert.equal(formatDriName('Taylor Example (例(れい))'), 'Taylor');
+  assert.equal(formatDriName('ジェイミー エグザンプル- Jamie Example -'), 'Jamie');
+  assert.equal(formatDriName('ロビン - Robin'), 'Robin');
+  assert.equal(formatDriName('例野 花子- Avery Example -'), '例野 花子');
   assert.equal(formatDriName(null), 'Unassigned');
 });
 

@@ -8,6 +8,16 @@ Work-state placement also accounts for unfinished delivery: an owned ticket or t
 
 ## Setup
 
+### Colleague prerequisites
+
+- Node 22+ and a current browser with Web Locks support.
+- The two bundled Skills: `skills/focus-shelf` for collection and refresh, and `skills/generate-focus-shelf-icon` for topic illustrations. No personal `manage-focus-shelf` Skill is required.
+- An authorized Linear MCP/connector in the colleague's Codex setup, with workspace access and complete paginated assigned/created issues, creator identity, children, comments, Sprint and estimate reads. The repository does not install connectors or log in for you.
+- For PR/CI enrichment, an authorized GitHub MCP/connector or authenticated GitHub CLI with access to the relevant repositories and current-head checks. Without this access, PR/CI coverage is explicitly unavailable; it is not treated as zero PRs or passing CI.
+- A separate external local data directory and stable browser origin for each profile. Never upload real snapshots, DRI maps or personal browser data to this repository.
+
+The shared validator accepts at most 1,000 final tickets and 5,000 entries per catalog collection. These are safety limits, not permission to truncate a larger collection. A limit or access failure preserves the last complete snapshot.
+
 Use Node 22 or later. There are no dependencies to install. Set `FOCUS_SHELF_HOME` to an absolute directory outside this repository, then run `npm start`. Open `http://localhost:8770` in a current browser with Web Locks support. Keep this fixed origin to preserve browser-local overlays. If port 8770 is occupied, startup fails with `EADDRINUSE`; it never stops another service or switches ports.
 
 ```sh
@@ -16,6 +26,8 @@ npm start
 ```
 
 A missing config or snapshot produces a safe empty state. Choose one of the following setup paths and keep personal files outside the checkout.
+
+For an explicitly requested isolated colleague trial on a computer already running a Shelf, the exported `startServer({home,port})` API can run a separate external home on a separate port. Do not replace the existing profile or stop its server. Keep the trial's returned localhost origin unchanged while using its local overlays.
 
 ### Demo home
 
@@ -39,7 +51,7 @@ Focus Shelf deliberately separates a human workflow decision from a GitHub fact.
 
 The compact **Update** button at the top prepares this workflow without pretending the webpage can synchronize external systems. It copies a complete English refresh request for Codex; paste that request into the current Codex chat. The request covers the complete owner/creator/retained scope, exact PR and current-head CI verification, Release target policy classification, local overlay preservation, and a final reload plus rendered-page check. If clipboard access is unavailable, the page reveals selectable fallback text. The button never contacts Linear/GitHub, changes a ticket, or claims the Shelf is current. Browser reload only rereads already-published local files.
 
-Read [CODEX_SNAPSHOT.md](CODEX_SNAPSHOT.md) and the bundled [thin Skill](skills/focus-shelf/SKILL.md). Ask Codex explicitly to refresh through already authorized capabilities. New refreshes use snapshot/catalog v2: complete assigned, created-by-owner and followed seeds and their entire reciprocal child closure are required, including tickets created by the profile and later reassigned, children assigned to others, unassigned children and Done children. Related, blockedBy and external parent tickets do not expand the set. Exhaust pagination; incomplete access or more than 100 final tickets preserves the existing snapshot. Assigned/created/followed/context classification remains internal and uses that precedence; a created ticket assigned to another person is shown concisely as `Created → Assigned to <name>`. Legacy snapshots remain readable, with no v2 downgrade. This starter neither connects to external services nor grants that authorization.
+Read [CODEX_SNAPSHOT.md](CODEX_SNAPSHOT.md) and the bundled [thin Skill](skills/focus-shelf/SKILL.md). Ask Codex explicitly to refresh through already authorized capabilities. New refreshes use snapshot/catalog v2: complete assigned, created-by-owner and followed seeds and their entire reciprocal child closure are required, including tickets created by the profile and later reassigned, children assigned to others, unassigned children and Done children. Related, blockedBy and external parent tickets do not expand the set. Exhaust pagination; incomplete access or more than 1,000 final tickets preserves the existing snapshot. Assigned/created/followed/context classification remains internal and uses that precedence; a created ticket assigned to another person is shown concisely as `Created → Assigned to <name>`. Legacy snapshots remain readable, with no v2 downgrade. This starter neither connects to external services nor grants that authorization.
 
 Codex needs an already authorized Linear connector/MCP that can read the configured owner's assigned issues, created-by-owner issues with verified `createdById`, prior created and followed issue IDs, reciprocal relations, Sprint metadata and estimate points in the configured workspace. For the first refresh there is no prior snapshot; subsequent refreshes must also retain the prior created and followed sets. An active-only search, incomplete relation coverage or missing Sprint evidence cannot establish complete coverage. Estimate may remain omitted when that optional field was not collected, but must never be guessed. Without the required complete-set capabilities, preserve the previous files, or keep a first real home empty, and report the missing evidence.
 
@@ -61,4 +73,4 @@ Run `node scripts/validate-shareable.mjs --list` to print the exact sorted allow
 
 For a local privacy check, optionally set `FOCUS_SHELF_DENYLIST_FILE` to an absolute external JSON file containing an array of private strings to reject. The validator reads it locally and never includes its bytes or path in the publication list. Keep real identities and company identifiers out of shared code and fixtures; bundled probes use synthetic markers only. Without this optional file, validation checks the file allowlist and generic credential patterns and does not claim personalized identity coverage.
 
-The HTTP server binds localhost and accepts only the canonical `localhost:8770` Host; alternate loopback aliases are rejected to keep browser storage and writer locks on one origin. It rejects non-GET requests, traversal and symlinks and serves an explicit static allowlist. It has no cloud deployment, extension, calendar, Slack, Taskboard, OAuth or background synchronization feature. Remote repository creation, publication and real-data migration are separate actions.
+The HTTP server binds localhost and accepts only its canonical `localhost:<actual port>` Host (8770 for normal startup); alternate loopback aliases are rejected to keep browser storage and writer locks on one origin. It rejects unapproved requests, traversal and symlinks and serves an explicit static allowlist. It has no cloud deployment, extension, calendar, Slack, Taskboard, OAuth or background synchronization feature. Remote repository creation, publication and real-data migration are separate actions.

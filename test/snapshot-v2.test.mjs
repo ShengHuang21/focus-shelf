@@ -79,13 +79,15 @@ test('v2 builder projects references and external parents without expanding seed
   assert.deepEqual(result.issues[0].relations, [{ type: 'child', issueId: 'DEMO-2' }, { type: 'related', issueId: 'DEMO-4' }]);
 });
 
-test('v2 100 issues accepted, 101 rejected', () => {
-  const value = { ...snapshotV2, followedIssueIds: [], issues: Array.from({ length: 100 }, (_, index) => {
+test('v2 1000 issues and complete coverage accepted, 1001 rejected', () => {
+  const value = { ...snapshotV2, followedIssueIds: [], issues: Array.from({ length: 1000 }, (_, index) => {
     const n = index + 1;
     return { ...structuredClone(snapshot.issues[0]), id: `DEMO-${n}`, uuid: `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`, url: `https://linear.example.test/demo-workspace/issue/DEMO-${n}` };
   }) };
-  assert.equal(validateSnapshot(value, config).issues.length, 100);
-  value.issues.push({ ...value.issues[0], id: 'DEMO-101' });
+  assert.equal(validateSnapshot(value, config).issues.length, 1000);
+  const largeCatalog = { ...structuredClone(catalogV2), pullRequests: [], ciObservations: [], aliases: [], presentation: { repositories: [], tickets: [], report: { excludedIssueIds: [], familySummaries: [] } }, coverage: value.issues.map(issue => ({ issueId: issue.id, pr: 'unavailable', ci: 'unavailable', observedAt: value.generatedAt })) };
+  assert.equal(validateCatalog(largeCatalog, config, value).coverage.length, 1000);
+  value.issues.push({ ...value.issues[0], id: 'DEMO-1001', uuid: '00000000-0000-4000-8000-000000001001', url: 'https://linear.example.test/demo-workspace/issue/DEMO-1001' });
   assert.throws(() => validateSnapshot(value, config), /INVALID_SNAPSHOT/);
 });
 
