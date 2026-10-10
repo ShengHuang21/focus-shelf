@@ -198,7 +198,7 @@ test('v2 preserves category semantics without visible system counts and keeps ar
   const state = { config, snapshot: snapshotV2, catalog: catalogV2, overlays: client.getOverlays() };
   const html = renderShelf(state);
   assert.doesNotMatch(html, /\d+ items|\d+ assigned|\d+ followed|Codex snapshot|Reload snapshot|Create report/);
-  assert.match(html, /ticket-ownership"><span>Unassigned/);
+  assert.match(html, /ticket-ownership"><span class="ownership-unassigned">Unassigned/);
   assert.match(html, /ticket-ownership"><span title="Full Linear assignee: Other Demo User">Assignee: Other · archived/);
   assert.equal((html.match(/Synthetic ticket 3/g) ?? []).length, 1);
   assert.match(html, /Synthetic local memo/);

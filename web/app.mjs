@@ -170,8 +170,8 @@ function renderIssue(item, context) {
   const parentSprint = hasDri && childItems.length > 0 ? item.sprint : null;
   const createdOwnership = category === 'created' && item.assignee?.id
     ? `<span class="ownership-created">Created</span><span class="ownership-arrow">→</span><span class="ownership-assigned"${assigneeTitle}>Assigned to ${escape(formatAssigneeName(item.assignee?.name))}${archived ? ' · archived' : ''}</span>`
-    : `<span${assigneeTitle}>${escape(assignee)}</span>`;
-  const ownership = hasDri
+    : `<span${item.assignee?.id ? '' : ' class="ownership-unassigned"'}${assigneeTitle}>${escape(assignee)}</span>`;
+  const ownership = hasDri && item.assignee?.id
     ? ''
     : `<div class="ticket-ownership">${createdOwnership}${item.sprint ? `<span>· Sprint: ${escape(item.sprint.name)}</span>` : ''}</div>`;
   const revealChild = context.revealIssueId && childItems.some(child => familyHasIssue(child, context.revealIssueId, children, overlays));

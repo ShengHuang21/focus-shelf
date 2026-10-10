@@ -204,8 +204,18 @@ test('C11 a ticket created by the profile remains visible after reassignment', (
 test('C11 a created unassigned ticket has only the Unassigned ownership label', () => {
   const value = { ...snapshot, createdIssueIds: ['DEMO-1'], issues: [{ ...snapshot.issues[0], assignee: null }] };
   const html = renderShelf({ config, snapshot: value, catalog: null });
-  assert.match(html, /ticket-ownership"><span>Unassigned<\/span>/);
+  assert.match(html, /ticket-ownership"><span class="ownership-unassigned">Unassigned<\/span>/);
   assert.doesNotMatch(html, /ownership-created|ownership-arrow|Assigned to Unassigned/);
+});
+
+test('Unassigned uses a shared red badge even with DRI context', async () => {
+  const value = { ...snapshot, issues: [{ ...snapshot.issues[0], assignee: null }] };
+  const presentation = { ...catalog.presentation, tickets: [{ issueId: 'DEMO-1', label: 'Demo', icon: 'ticket', tone: 'blue', description: 'Synthetic', workstream: 'Synthetic Workstream' }] };
+  const html = renderShelf({ config, snapshot: value, catalog: { ...catalog, presentation }, dri });
+  assert.match(html, /class="ownership-unassigned">Unassigned<\/span>/);
+  assert.match(html, /First DRI:/);
+  const css = await readFile(join(root, 'web/styles.css'), 'utf8');
+  assert.match(css, /\.ownership-unassigned\s*\{[^}]*color:\s*#a12b24;[^}]*background:\s*#fff1f0/s);
 });
 
 test('C11 neutral topic color defaults to blue regardless of ticket group', () => {

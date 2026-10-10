@@ -62,6 +62,7 @@ nav { display: flex; flex-wrap: wrap; gap: 8px; min-width: 0; }
 .ticket-family { padding: 12px; }
 .ticket-ownership { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 4px; color: var(--muted); font-size: .7rem; }
 .ownership-created { padding: 1px 6px; border: 1px solid #e4b64d; border-radius: 999px; color: #7a5400; background: #fff2bf; font-weight: 750; }
+.ownership-unassigned { padding: 1px 6px; border: 1px solid #efb3ad; border-radius: 999px; color: #a12b24; background: #fff1f0; font-weight: 750; }
 .ownership-arrow { color: #8e96a6; font-weight: 800; }
 .ownership-assigned { color: #656b78; }
 .ticket-dri { display: flex; flex-wrap: nowrap; align-items: center; gap: 4px 9px; margin: 0 0 7px; overflow-x: auto; color: #515564; font-size: .69rem; white-space: nowrap; }
