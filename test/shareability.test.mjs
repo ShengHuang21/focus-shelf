@@ -8,6 +8,25 @@ import { config, snapshot, catalog, dri, snapshotV2, catalogV2 } from './helpers
 
 const root = new URL('..', import.meta.url).pathname;
 
+test('Completed folds every subgroup and orders Sprint then creation month newest first', () => {
+  const done = { ...snapshot.issues[0], relations: [], status: { name: 'Done', type: 'completed' }, sprint: null };
+  const issues = [
+    { ...done, id: 'DEMO-1', sprint: { name: '26.9.S1', startDate: '2026-09-01T00:00:00.000Z', endDate: '2026-09-15T00:00:00.000Z' } },
+    { ...done, id: 'DEMO-2', sprint: { name: '26.9.S2', startDate: '2026-09-16T00:00:00.000Z', endDate: '2026-09-30T00:00:00.000Z' } },
+    { ...done, id: 'DEMO-3', createdAt: '2026-09-30T16:30:00.000Z' },
+    { ...done, id: 'DEMO-4', createdAt: '2026-09-01T00:00:00.000Z' },
+    { ...done, id: 'DEMO-5', createdAt: '2025-10-01T00:00:00.000Z' },
+    { ...done, id: 'DEMO-6' },
+  ];
+  const state = { config: { ...config, timezone: 'Asia/Tokyo' }, snapshot: { ...snapshot, issues }, catalog: null, now: '2026-10-10T00:00:00.000Z' };
+  const html = renderShelf(state);
+  const summaries = [...html.matchAll(/data-fold="sprint:completed:[^"]+"><summary>([^<]+)<\/summary>/g)].map(match => match[1]);
+  assert.deepEqual(summaries, ['Sprint · 26.9.S2', 'Sprint · 26.9.S1', 'October 2026', 'September 2026', 'October 2025', 'Undated']);
+  assert.doesNotMatch(html, /data-fold="sprint:completed:[^"]+" open/);
+  assert.match(renderShelf({ ...state, revealIssueId: 'DEMO-3' }), /data-fold="sprint:completed:month:2026-10" open/);
+  assert.match(createUpdateRequest(), /creation timestamps/);
+});
+
 test('Duplicate tickets are omitted regardless of assignee and original work remains', () => {
   for (const assignee of [null, snapshot.issues[0].assignee]) {
     const original = { ...snapshot.issues[0], relations: [{ type: 'related', issueId: 'DEMO-2' }] };

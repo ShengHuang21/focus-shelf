@@ -8,6 +8,16 @@ import { startServer } from '../server.mjs';
 import { config, snapshot, catalog, snapshotV2, catalogV2, temporaryHome, memoryStorage, memoryLocks } from './helpers.mjs';
 import { createLocalClient } from '../lib/local-client.mjs';
 
+test('verified creation timestamps survive projection and reject invalid dates', () => {
+  const value = structuredClone(snapshotV2);
+  value.issues[0].createdAt = '2026-09-30T16:30:00.000Z';
+  assert.equal(buildSnapshotV2(value, config).issues[0].createdAt, value.issues[0].createdAt);
+  for (const date of [null, 'yesterday', '2026-13-01T00:00:00.000Z']) {
+    value.issues[0].createdAt = date;
+    assert.throws(() => validateSnapshot(value, config), /createdAt/);
+  }
+});
+
 test('v2 accepts three-level child closure, overlapping seeds, other assignees and unassigned Done context', () => {
   assert.deepEqual(validateSnapshot(snapshotV2, config), snapshotV2);
   assert.deepEqual(buildSnapshotV2(snapshotV2, config), snapshotV2);

@@ -218,29 +218,39 @@ function familySprintGroup(item, children, overlays, observedAt) {
     : 'dated';
   const prefix = { current: 'This Sprint', upcoming: 'Upcoming Sprint', past: 'Past Sprint', dated: 'Sprint' }[kind];
   const rank = { current: 0, upcoming: 1, dated: 1, past: 4 }[kind];
-  return { key: `sprint:${key}`, kind, label: `${prefix} · ${sprint.name}`, rank, start: sprint.startDate };
+  return { key: `sprint:${key}`, kind, name: sprint.name, label: `${prefix} · ${sprint.name}`, rank, start: sprint.startDate };
 }
 
 function renderSprintGroups(items, context) {
+  const completed = context.workGroup === 'completed';
   const sprintGroups = new Map();
   for (const item of items) {
-    const group = familySprintGroup(item, context.children, context.overlays, context.snapshotGeneratedAt);
+    let group = familySprintGroup(item, context.children, context.overlays, context.snapshotGeneratedAt);
+    if (completed && group.kind === 'none') {
+      const date = new Date(item.createdAt ?? NaN);
+      if (Number.isFinite(date.getTime())) {
+        const options = { timeZone: context.timezone, year: 'numeric', month: '2-digit' };
+        const parts = new Intl.DateTimeFormat('en', options).formatToParts(date);
+        const month = `${parts.find(part => part.type === 'year').value}-${parts.find(part => part.type === 'month').value}`;
+        group = { key: `month:${month}`, kind: 'month', label: new Intl.DateTimeFormat('en', { ...options, month: 'long' }).format(date), rank: 1, start: month };
+      } else group = { key: 'undated', kind: 'undated', label: 'Undated', rank: 2, start: '' };
+    } else if (completed) group = { ...group, rank: 0, label: group.kind === 'mixed' || /^Sprint\b/i.test(group.name) ? group.label.replace(/^(This|Upcoming|Past)? ?Sprint · /, '') : `Sprint · ${group.name}` };
     const current = sprintGroups.get(group.key) ?? { ...group, items: [] };
     current.items.push(item);
     sprintGroups.set(group.key, current);
   }
   return [...sprintGroups.values()]
-    .sort((left, right) => left.rank - right.rank || left.start.localeCompare(right.start) || left.label.localeCompare(right.label))
+    .sort((left, right) => left.rank - right.rank || (completed ? right.start.localeCompare(left.start) : left.start.localeCompare(right.start)) || left.label.localeCompare(right.label))
     .map(group => group.kind === 'none'
       ? `<div class="group-items sprint-group-none">${group.items.map(item => renderIssue(item, context)).join('')}</div>`
-      : group.kind === 'past'
+      : completed || group.kind === 'past'
         ? `<details class="sprint-group sprint-group-past" data-fold="sprint:${escape(context.workGroup)}:${escape(group.key)}"${context.revealIssueId && group.items.some(item => familyHasIssue(item, context.revealIssueId, context.children, context.overlays)) ? ' open' : ''}><summary>${escape(group.label)}</summary><div class="group-items">${group.items.map(item => renderIssue(item, context)).join('')}</div></details>`
       : `<section class="sprint-group sprint-group-${escape(group.kind)}"><h3>${escape(group.label)}</h3><div class="group-items">${group.items.map(item => renderIssue(item, context)).join('')}</div></section>`)
     .join('');
 }
 
 export function createUpdateRequest() {
-  return 'Please update my Focus Shelf. Collect the complete current Linear scope: issues assigned to me, issues I created and later reassigned, previously retained created or followed issues, and the full reciprocal child hierarchy. Re-verify each issue\'s Linear status, relationships, Sprint, estimate, exact associated PRs, current GitHub Merge/Closed state, and CI for the current PR head. Preserve browser-local Memo, Archive, and manual status for PRs that remain open. Treat a Release target policy failure as an attention warning, not a CI, test, build, or lint failure. Publish only after the complete snapshot and catalog both pass validation; then reload the live Focus Shelf page and verify the rendered results.';
+  return 'Please update my Focus Shelf. Collect the complete current Linear scope: issues assigned to me, issues I created and later reassigned, previously retained created or followed issues, and the full reciprocal child hierarchy. Re-verify each issue\'s Linear status, relationships, Sprint, estimate, verified Linear creation timestamps, exact associated PRs, current GitHub Merge/Closed state, and CI for the current PR head. Preserve browser-local Memo, Archive, and manual status for PRs that remain open. Treat a Release target policy failure as an attention warning, not a CI, test, build, or lint failure. Publish only after the complete snapshot and catalog both pass validation; then reload the live Focus Shelf page and verify the rendered results.';
 }
 
 export function renderShelf({ config, snapshot, catalog, dri, overlays = {}, readOnly = true, readOnlyReason = '', saveState = 'idle', revealIssueId = null, now = new Date().toISOString() }) {
@@ -266,7 +276,7 @@ export function renderShelf({ config, snapshot, catalog, dri, overlays = {}, rea
   const renderedGroups = groups.map(group => {
     const items = visibleRoots.filter(item => group.types.has(familyGroupType(item)));
     if (!items.length) return '';
-    const context = { byId, children, catalog, overlays, readOnly, maps, categories, snapshotGeneratedAt: now, revealIssueId, workGroup: group.key };
+    const context = { byId, children, catalog, overlays, readOnly, maps, categories, snapshotGeneratedAt: now, revealIssueId, workGroup: group.key, timezone: config?.timezone ?? 'UTC' };
     const reveal = revealIssueId && items.some(item => familyHasIssue(item, revealIssueId, children, overlays));
     return `<details class="focus-group focus-group-${group.key}" data-fold="group:${group.key}"${reveal ? ' open' : ''}><summary><span>${group.symbol}</span>${group.label}</summary><div class="sprint-groups">${renderSprintGroups(items, context)}</div></details>`;
   }).join('');
