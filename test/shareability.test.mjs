@@ -8,6 +8,25 @@ import { config, snapshot, catalog, dri, snapshotV2, catalogV2 } from './helpers
 
 const root = new URL('..', import.meta.url).pathname;
 
+test('Backlog is not promoted by an open PR or a started child', () => {
+  const parent = { ...snapshot.issues[0], status: { name: 'Backlog', type: 'backlog' }, relations: [{ type: 'child', issueId: 'DEMO-2' }] };
+  const child = { ...snapshot.issues[0], id: 'DEMO-2', title: 'Started child', relations: [{ type: 'parent', issueId: parent.id }] };
+  const value = { ...catalog, pullRequests: [{ ...catalogV2.pullRequests[0], issueId: parent.id, state: 'open' }] };
+  const html = renderShelf({ config, snapshot: { ...snapshot, issues: [parent, child] }, catalog: value });
+  assert.match(html, /data-fold="group:backlog">[^]*DEMO-1/);
+  assert.doesNotMatch(html, /data-fold="group:current"/);
+  assert.match(html, /Started child/);
+});
+
+test('Sprint phase follows current time and actual dates, not stale snapshot or S1 midpoint guesses', () => {
+  const issue = { ...snapshot.issues[0], sprint: { name: '26.10.S2', startDate: '2026-10-20T00:00:00.000Z', endDate: '2026-11-02T00:00:00.000Z' } };
+  const state = { config, snapshot: { ...snapshot, generatedAt: '2026-09-01T00:00:00.000Z', issues: [issue] }, catalog: null };
+  assert.match(renderShelf({ ...state, now: '2026-10-10T00:00:00.000Z' }), /Upcoming Sprint · 26\.10\.S2/);
+  assert.match(renderShelf({ ...state, now: '2026-10-25T00:00:00.000Z' }), /This Sprint · 26\.10\.S2/);
+  assert.match(renderShelf({ ...state, now: '2026-11-03T00:00:00.000Z' }), /Past Sprint · 26\.10\.S2/);
+  assert.match(renderShelf({ ...state, snapshot: { ...state.snapshot, issues: [{ ...issue, sprint: { ...issue.sprint, startDate: null, endDate: null } }] }, now: '2026-10-25T00:00:00.000Z' }), />Sprint · 26\.10\.S2/);
+});
+
 test('Backlog and Past Sprint fold independently and reveal restores both levels', () => {
   const issue = { ...snapshot.issues[0], status: { name: 'Backlog', type: 'backlog' }, sprint: { name: 'Old sprint', startDate: '2026-09-01T00:00:00.000Z', endDate: '2026-09-10T00:00:00.000Z' } };
   const state = { config, snapshot: { ...snapshot, generatedAt: '2026-10-10T00:00:00.000Z', issues: [issue] }, catalog: null };
@@ -151,17 +170,18 @@ test('C11 restoring a completed ticket opens its destination group instead of ma
   assert.match(restored, /data-archive="DEMO-1"[^>]*>Archive<\/button>/);
 });
 
-test('C11 a completed Linear ticket stays in Current work while an associated PR remains active', () => {
+test('C11 a completed Linear ticket stays Completed while an associated PR remains open', () => {
   const done = { ...snapshot.issues[0], status: { name: 'Done', type: 'completed' } };
   const activeCatalog = {
     ...catalog,
     pullRequests: [{ ...catalogV2.pullRequests[0], issueId: done.id, state: 'open' }],
   };
   const html = renderShelf({ config, snapshot: { ...snapshot, issues: [done] }, catalog: activeCatalog });
-  assert.match(html, /<details class="focus-group focus-group-current" data-fold="group:current">[^]*DEMO-1/);
-  assert.match(renderShelf({ config, snapshot: { ...snapshot, issues: [done] }, catalog: activeCatalog, revealIssueId: done.id }), /data-fold="group:current" open/);
+  assert.match(html, /data-fold="group:completed">[^]*DEMO-1/);
+  assert.match(renderShelf({ config, snapshot: { ...snapshot, issues: [done] }, catalog: activeCatalog, revealIssueId: done.id }), /data-fold="group:completed" open/);
+  assert.match(html, /PR #/);
   assert.match(html, /status-pill status-completed[^>]*>Done</);
-  assert.doesNotMatch(html, /focus-group-completed/);
+  assert.doesNotMatch(html, /focus-group-current/);
 });
 
 test('C11 a completed Linear ticket moves into Completed after all associated PRs become terminal', () => {
@@ -209,7 +229,7 @@ test('C11 a ticket created by the profile remains visible after reassignment', (
   assert.doesNotMatch(html, /delegated-ticket/);
 
   const report = createReport({ snapshot: value, catalog: null });
-  assert.match(report, /In Progress\n• DEMO-1/);
+  assert.doesNotMatch(report, /In Progress\n• DEMO-1/);
 });
 
 test('C11 a created unassigned ticket has only the Unassigned ownership label', () => {
@@ -252,14 +272,13 @@ test('C11 other-owner child work is collapsed without exposing internal context 
   assert.doesNotMatch(html, /<details class="delegated-ticket" open/);
 });
 
-test('C11 an active child keeps a completed parent family in Current work', () => {
+test('C11 an active child does not change its completed parent placement', () => {
   const parent = { ...snapshot.issues[0], id: 'DEMO-10', uuid: '00000000-0000-4000-8000-000000000010', title: 'Completed context parent', url: 'https://linear.example.test/demo-workspace/issue/DEMO-10', status: { name: 'Done', type: 'completed' }, relations: [{ type: 'child', issueId: 'DEMO-11' }] };
   const child = { ...snapshot.issues[0], id: 'DEMO-11', uuid: '00000000-0000-4000-8000-000000000011', title: 'Active assigned child', url: 'https://linear.example.test/demo-workspace/issue/DEMO-11', status: { name: 'In Progress', type: 'started' }, relations: [{ type: 'parent', issueId: 'DEMO-10' }] };
   const html = renderShelf({ config, snapshot: { ...snapshot, followedIssueIds: ['DEMO-10'], issues: [parent, child] }, catalog });
-  const current = html.slice(html.indexOf('Current work'), html.indexOf('<details id="archive-section"'));
-  assert.match(current, /Completed context parent/);
-  assert.match(current, /Active assigned child/);
-  assert.doesNotMatch(html, /<h2><span>✓<\/span>Completed<\/h2>/);
+  assert.match(html, /data-fold="group:completed">[^]*Completed context parent/);
+  assert.match(html, /Active assigned child/);
+  assert.doesNotMatch(html, /data-fold="group:current"/);
 });
 
 test('C11 another owner context child cannot promote completed profile work into Current work', () => {
@@ -323,7 +342,7 @@ test('C11 Current work groups complete ticket families by observed Linear Sprint
   const first = { ...snapshot.issues[0], id: 'DEMO-10', uuid: '00000000-0000-4000-8000-000000000010', title: 'First sprint item', url: 'https://linear.example.test/demo-workspace/issue/DEMO-10', sprint };
   const second = { ...snapshot.issues[0], id: 'DEMO-11', uuid: '00000000-0000-4000-8000-000000000011', title: 'Second sprint item', url: 'https://linear.example.test/demo-workspace/issue/DEMO-11', sprint };
   const unscheduled = { ...snapshot.issues[0], id: 'DEMO-12', uuid: '00000000-0000-4000-8000-000000000012', title: 'Unscheduled item', url: 'https://linear.example.test/demo-workspace/issue/DEMO-12', sprint: null };
-  const html = renderShelf({ config, snapshot: { ...snapshot, generatedAt: '2026-10-09T00:00:00.000Z', issues: [first, second, unscheduled] }, catalog });
+  const html = renderShelf({ config, snapshot: { ...snapshot, generatedAt: '2026-10-09T00:00:00.000Z', issues: [first, second, unscheduled] }, catalog, now: '2026-10-09T00:00:00.000Z' });
   assert.equal((html.match(/This Sprint · Sprint 26\.10\.S1/g) ?? []).length, 1);
   const start = html.indexOf('This Sprint · Sprint 26.10.S1');
   const currentSprint = html.slice(start, html.indexOf('</section>', start));

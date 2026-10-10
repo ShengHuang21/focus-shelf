@@ -193,22 +193,8 @@ function familyHasIssue(item, issueId, children, overlays) {
   return activeRoots(children.get(item.id) ?? [], children, overlays).some(child => familyHasIssue(child, issueId, children, overlays));
 }
 
-function familyGroupType(item, children, overlays, categories, catalog) {
-  function relevantTypes(current) {
-    const visibleChildren = activeRoots(children.get(current.id) ?? [], children, overlays);
-    const profileOwned = categories.get(current.id) !== 'context';
-    const activePR = profileOwned && (catalog?.pullRequests ?? []).some(pr =>
-      pr.issueId === current.id && ['open', 'ready-review'].includes(displayedPRState(pr, overlays))
-    );
-    const ownTypes = profileOwned ? [activePR ? 'started' : current.status.type] : [];
-    return [...ownTypes, ...visibleChildren.flatMap(relevantTypes)];
-  }
-  const types = relevantTypes(item);
-  if (types.includes('started')) return 'started';
-  if (types.some(type => ['triage', 'unstarted'].includes(type))) return 'unstarted';
-  if (types.includes('backlog')) return 'backlog';
-  return types[0] ?? item.status.type;
-}
+// A family's outer placement follows its root ticket, not its PRs or children.
+const familyGroupType = item => item.status.type;
 
 function familySprintGroup(item, children, overlays, observedAt) {
   function visibleFamily(current) {
@@ -257,7 +243,7 @@ export function createUpdateRequest() {
   return 'Please update my Focus Shelf. Collect the complete current Linear scope: issues assigned to me, issues I created and later reassigned, previously retained created or followed issues, and the full reciprocal child hierarchy. Re-verify each issue\'s Linear status, relationships, Sprint, estimate, exact associated PRs, current GitHub Merge/Closed state, and CI for the current PR head. Preserve browser-local Memo, Archive, and manual status for PRs that remain open. Treat a Release target policy failure as an attention warning, not a CI, test, build, or lint failure. Publish only after the complete snapshot and catalog both pass validation; then reload the live Focus Shelf page and verify the rendered results.';
 }
 
-export function renderShelf({ config, snapshot, catalog, dri, overlays = {}, readOnly = true, readOnlyReason = '', saveState = 'idle', revealIssueId = null }) {
+export function renderShelf({ config, snapshot, catalog, dri, overlays = {}, readOnly = true, readOnlyReason = '', saveState = 'idle', revealIssueId = null, now = new Date().toISOString() }) {
   const issues = visibleIssues(snapshot);
   const byId = new Map(issues.map(item => [item.id, item]));
   const categories = new Map(issues.map(item => [item.id, issueCategory(item, snapshot)]));
@@ -278,9 +264,9 @@ export function renderShelf({ config, snapshot, catalog, dri, overlays = {}, rea
   const visibleRoots = activeRoots(roots, children, overlays);
   const pins = (config?.pins ?? []).map(pin => link(pin.url, pin.title, 'pin-link')).join('');
   const renderedGroups = groups.map(group => {
-    const items = visibleRoots.filter(item => group.types.has(familyGroupType(item, children, overlays, categories, catalog)));
+    const items = visibleRoots.filter(item => group.types.has(familyGroupType(item)));
     if (!items.length) return '';
-    const context = { byId, children, catalog, overlays, readOnly, maps, categories, snapshotGeneratedAt: snapshot?.generatedAt, revealIssueId, workGroup: group.key };
+    const context = { byId, children, catalog, overlays, readOnly, maps, categories, snapshotGeneratedAt: now, revealIssueId, workGroup: group.key };
     const reveal = revealIssueId && items.some(item => familyHasIssue(item, revealIssueId, children, overlays));
     return `<details class="focus-group focus-group-${group.key}" data-fold="group:${group.key}"${reveal ? ' open' : ''}><summary><span>${group.symbol}</span>${group.label}</summary><div class="sprint-groups">${renderSprintGroups(items, context)}</div></details>`;
   }).join('');
@@ -336,10 +322,9 @@ function createReportModel({ snapshot, catalog, overlays = {} }) {
     });
     ready.push(...readyMembers);
     if (readyMembers.length) continue;
-    const activeAssigned = members.filter(item => ['assigned', 'created'].includes(issueCategory(item, snapshot)) && item.status?.type === 'started');
+    const activeAssigned = members.filter(item => issueCategory(item, snapshot) === 'assigned' && item.status?.type === 'started');
     if (!activeAssigned.length) continue;
-    const representative = ['assigned', 'created'].includes(issueCategory(root, snapshot)) ? root : activeAssigned[0];
-    progress.push(reportIssue(representative));
+    progress.push(...activeAssigned.map(item => reportIssue(item)));
   }
   return { sections: [{ title: 'Ready for Review', issues: ready }, { title: 'In Progress', issues: progress }] };
 }
