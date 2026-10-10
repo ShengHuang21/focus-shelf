@@ -1,10 +1,10 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "generatedAt": "2026-10-09T00:00:00.000Z",
   "source": { "kind": "codex-manual-refresh", "workspaceSlug": "demo-workspace" },
-  "scope": "assigned-followed",
+  "scope": "assigned-followed-context",
   "ownerId": "demo-owner",
-  "followedIssueIds": ["DEMO-10", "DEMO-11"],
+  "followedIssueIds": ["DEMO-10"],
   "issues": [
     {
       "id": "DEMO-10",
@@ -14,7 +14,8 @@
       "status": { "name": "In Progress", "type": "started" },
       "assignee": { "id": "demo-owner", "name": "Demo User" },
       "relations": [{ "type": "child", "issueId": "DEMO-11" }],
-      "sprint": { "name": "Demo Sprint", "startDate": "2026-10-05T00:00:00.000Z", "endDate": "2026-10-16T00:00:00.000Z" }
+      "sprint": { "name": "Demo Sprint", "startDate": "2026-10-05T00:00:00.000Z", "endDate": "2026-10-16T00:00:00.000Z" },
+      "estimate": 3
     },
     {
       "id": "DEMO-11",
@@ -22,7 +23,7 @@
       "title": "Investigate and harden response recovery",
       "url": "https://linear.example.test/demo-workspace/issue/DEMO-11",
       "status": { "name": "In Progress", "type": "started" },
-      "assignee": { "id": "demo-owner", "name": "Demo Engineer" },
+      "assignee": { "id": "demo-other", "name": "Demo Engineer" },
       "relations": [{ "type": "parent", "issueId": "DEMO-10" }],
       "sprint": { "name": "Demo Sprint", "startDate": "2026-10-05T00:00:00.000Z", "endDate": "2026-10-16T00:00:00.000Z" }
     }

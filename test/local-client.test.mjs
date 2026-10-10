@@ -152,7 +152,7 @@ test('C08 absence of Web Locks makes overlays visibly read-only', async t => {
   assert.match(client.readOnlyReason, /Web Locks/);
 });
 
-test('C09 memo/archive/manual PR survive reload and remain profile isolated', async t => {
+test('C09 memo/archive/manual PR status survive reload and remain profile isolated', async t => {
   const storage = memoryStorage();
   const locks = memoryLocks();
   const first = await createLocalClient(options({ storage, locks }));

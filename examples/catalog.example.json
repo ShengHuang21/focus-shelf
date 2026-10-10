@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "ownerId": "demo-owner",
   "workspaceSlug": "demo-workspace",
   "snapshotGeneratedAt": "2026-10-09T00:00:00.000Z",
@@ -9,7 +9,9 @@
       "issueId": "DEMO-11",
       "repository": "demo/infrastructure",
       "number": 68,
-      "url": "https://example.test/demo/infrastructure/pull/68",
+      "url": "https://github.com/demo/infrastructure/pull/68",
+      "headSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "association": { "kind": "linear-attachment", "issueId": "DEMO-11", "sourceUrl": "https://linear.example.test/demo-workspace/issue/DEMO-11" },
       "baseBranch": "release-candidate",
       "state": "open",
       "purpose": "Enable response recovery in RC",
@@ -19,12 +21,18 @@
       "issueId": "DEMO-11",
       "repository": "demo/infrastructure",
       "number": 163,
-      "url": "https://example.test/demo/infrastructure/pull/163",
+      "url": "https://github.com/demo/infrastructure/pull/163",
+      "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "association": { "kind": "github-reference", "issueId": "DEMO-11", "sourceUrl": "https://github.com/demo/infrastructure/pull/163" },
       "baseBranch": "main",
       "state": "open",
       "purpose": "Enable the corresponding Production configuration",
       "observedAt": "2026-10-09T00:00:00.000Z"
     }
+  ],
+  "coverage": [
+    { "issueId": "DEMO-10", "pr": "complete", "ci": "not-applicable", "observedAt": "2026-10-09T00:00:00.000Z" },
+    { "issueId": "DEMO-11", "pr": "complete", "ci": "complete", "observedAt": "2026-10-09T00:00:00.000Z" }
   ],
   "ciObservations": [
     {
@@ -45,8 +53,8 @@
   "presentation": {
     "repositories": [{ "repository": "demo/infrastructure", "label": "Infra", "tone": "amber" }],
     "tickets": [
-      { "issueId": "DEMO-10", "label": "User Report", "glyph": "💬", "tone": "red", "description": "A synthetic user-reported interruption requiring engineering follow-up" },
-      { "issueId": "DEMO-11", "label": "Chat Recovery", "glyph": "↻", "tone": "blue", "description": "Synthetic engineering work to recover interrupted responses" }
+      { "issueId": "DEMO-10", "label": "User Report", "icon": { "version": 1, "paths": [{ "d": "M10 12H54V42H28L16 52V42H10Z", "role": "fill" }, { "d": "M10 12H54V42H28L16 52V42H10Z", "role": "stroke" }, { "d": "M20 23H44M20 32H36", "role": "stroke" }] }, "tone": "red", "description": "A synthetic user-reported interruption requiring engineering follow-up", "workstream": "Synthetic Workstream" },
+      { "issueId": "DEMO-11", "label": "Chat Recovery", "icon": { "version": 1, "paths": [{ "d": "M15 21A19 19 0 0 1 48 17L53 22M49 43A19 19 0 0 1 16 47L11 42", "role": "stroke", "strokeWidth": 4 }, { "d": "M44 17H53V26M20 47H11V38", "role": "accent" }] }, "tone": "blue", "description": "Synthetic engineering work to recover interrupted responses", "workstream": "Synthetic Workstream" }
     ],
     "report": { "excludedIssueIds": [], "familySummaries": [] }
   }
