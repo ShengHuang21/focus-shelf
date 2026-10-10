@@ -132,9 +132,9 @@ function renderPRs(item, catalog, overlays, readOnly, maps) {
     const state = displayedPRState(pr, overlays);
     const terminal = ['merged', 'closed'].includes(pr.state);
     const repository = maps.repositories.get(pr.repository);
-    const repoLabel = repository?.label ?? pr.repository.split('/').at(-1);
+    const repoLabel = repository?.label ?? reportRepositoryLabel(pr, catalog);
     const normalizedLabel = repoLabel.trim().toUpperCase();
-    const tone = normalizedLabel === 'QA' ? 'coral' : normalizedLabel === 'INFRA' ? 'gold' : repository?.tone ?? 'neutral';
+    const tone = normalizedLabel === 'QA' ? 'coral' : normalizedLabel === 'INFRA' ? 'gold' : normalizedLabel === 'MONOREPO' || normalizedLabel === 'MONO REPO' ? 'blue' : repository?.tone ?? 'neutral';
     const ci = ciMark(catalog, pr);
     const ciIcon = state === 'ready-review' ? `<span class="ci-mark ci-${ci.tone}" title="${escape(ci.label)}" aria-label="${escape(ci.label)}">${ci.symbol}</span>` : '';
     return `<div class="ticket-pr-entry"><span class="repo-badge repo-${escape(tone)}">${escape(repoLabel)}</span><span class="branch-badge">${escape(pr.baseBranch)}</span>${link(pr.url, `PR #${pr.number}`, 'pr-link')}<select class="pr-status pr-status-${escape(state)}" data-pr="${escape(key)}" title="${terminal ? 'Current GitHub terminal state' : 'Set local workflow state; GitHub Merge/Closed is applied on the next Codex refresh'}" ${readOnly || terminal ? 'disabled' : ''}>${statusOptions.map(([value, label]) => `<option value="${value}" ${value === state ? 'selected' : ''}>${label}</option>`).join('')}</select>${ciIcon}</div>`;

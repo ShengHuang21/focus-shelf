@@ -379,6 +379,17 @@ test('C11 branch badges inherit a lighter repository colour treatment', async ()
   for (const tone of ['blue', 'green', 'gold', 'amber', 'coral', 'red']) assert.match(css, new RegExp(`\\.repo-${tone} \\+ \\.branch-badge`));
 });
 
+test('Repository and branch palettes remain canonical without catalog colour entries', () => {
+  for (const [slug, label, tone] of [['elite-sales-monorepo', 'Monorepo', 'blue'], ['elite-sales-infrastructure', 'Infra', 'gold'], ['elite-sales-qa-tests', 'QA', 'coral']]) {
+    const value = structuredClone(catalogV2);
+    value.presentation.repositories = [];
+    value.pullRequests[0].repository = `example/${slug}`;
+    value.pullRequests[0].url = `https://github.com/example/${slug}/pull/${value.pullRequests[0].number}`;
+    const html = renderShelf({ config, snapshot: snapshotV2, catalog: value });
+    assert.ok(html.includes(`repo-badge repo-${tone}">${label}</span><span class="branch-badge">`));
+  }
+});
+
 test('C11 QA repository badges use coral instead of Done-like green', () => {
   const value = structuredClone(catalogV2);
   value.presentation.repositories = [{ repository: 'demo/repository', label: 'QA', tone: 'green' }];
