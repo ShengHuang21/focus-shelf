@@ -55,10 +55,9 @@ test('duplicate status and duplicate/block relations preserve their exact meanin
   assert.deepEqual(validateSnapshot(value, config), value);
   assert.deepEqual(buildSnapshotV2(value, config), value);
   const html = renderShelf({ config, snapshot: value, catalog: null });
-  assert.match(html, /status-pill status-canceled[^>]*>Duplicate/);
-  assert.match(html, /focus-group-completed/);
-  assert.match(html, /reference-type">duplicateOf/);
-  assert.match(html, /reference-type">blocks/);
+  assert.doesNotMatch(html, /status-pill[^>]*>Duplicate/);
+  assert.ok(!html.includes(`>${value.issues[3].id}</a>`));
+  assert.ok(html.includes('>DEMO-1</a>'));
 });
 
 test('optional Linear estimate is validated and rendered as a numbered circle', () => {

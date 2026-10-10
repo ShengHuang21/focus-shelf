@@ -8,6 +8,18 @@ import { config, snapshot, catalog, dri, snapshotV2, catalogV2 } from './helpers
 
 const root = new URL('..', import.meta.url).pathname;
 
+test('Duplicate tickets are omitted regardless of assignee and original work remains', () => {
+  for (const assignee of [null, snapshot.issues[0].assignee]) {
+    const original = { ...snapshot.issues[0], relations: [{ type: 'related', issueId: 'DEMO-2' }] };
+    const duplicate = { ...snapshot.issues[0], id: 'DEMO-2', title: 'Duplicate copy', assignee, status: { name: 'Duplicate', type: 'duplicate' }, relations: [{ type: 'duplicateOf', issueId: original.id }] };
+    const state = { config, snapshot: { ...snapshot, issues: [original, duplicate] }, catalog: null, overlays: { archived: { 'DEMO-2': true } } };
+    assert.doesNotMatch(renderShelf(state), /DEMO-2|Duplicate copy/);
+    assert.match(renderShelf(state), /DEMO-1/);
+    assert.doesNotMatch(createReport(state), /DEMO-2/);
+    assert.doesNotMatch(createReportHtml(state), /DEMO-2/);
+  }
+});
+
 test('Backlog is not promoted by an open PR or a started child', () => {
   const parent = { ...snapshot.issues[0], status: { name: 'Backlog', type: 'backlog' }, relations: [{ type: 'child', issueId: 'DEMO-2' }] };
   const child = { ...snapshot.issues[0], id: 'DEMO-2', title: 'Started child', relations: [{ type: 'parent', issueId: parent.id }] };

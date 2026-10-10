@@ -81,7 +81,7 @@ test('clean checkout starts on loopback and displays empty state without credent
   assert.equal(response.status, 200);
   const html = await response.text();
   assert.match(html, /Focus Shelf/);
-  assert.match(html, /app\.mjs\?v=20261010\.15/);
+  assert.match(html, /app\.mjs\?v=20261010\.16/);
   const state = await (await fetch(`${server.origin}/api/shelf`)).json();
   assert.equal(state.schemaVersion, 1);
   assert.equal(state.snapshot, null);

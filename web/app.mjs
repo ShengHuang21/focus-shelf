@@ -34,10 +34,10 @@ const statusOptions = [
 ];
 const visibleIssues = snapshot => {
   const issues = snapshot?.issues ?? [];
-  const canceled = new Set(issues.filter(item => item.status.type === 'canceled'
-    || ['cancel', 'canceled', 'cancelled'].includes(item.status.name.trim().toLowerCase())).map(item => item.id));
-  return issues.filter(item => !canceled.has(item.id)).map(item => ({
-    ...item, relations: item.relations.filter(edge => !canceled.has(edge.issueId)),
+  const excluded = new Set(issues.filter(item => ['canceled', 'duplicate'].includes(item.status.type)
+    || ['cancel', 'canceled', 'cancelled', 'duplicate'].includes(item.status.name.trim().toLowerCase())).map(item => item.id));
+  return issues.filter(item => !excluded.has(item.id)).map(item => ({
+    ...item, relations: item.relations.filter(edge => !excluded.has(edge.issueId)),
   }));
 };
 const groups = [
