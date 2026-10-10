@@ -10,7 +10,7 @@ const root = new URL('..', import.meta.url).pathname;
 
 test('Canceled work is omitted from shelf, archive and reports without hiding active descendants', () => {
   const parent = { ...snapshot.issues[0], status: { name: 'Canceled', type: 'canceled' }, relations: [{ type: 'child', issueId: 'DEMO-2' }] };
-  const child = { ...snapshot.issues[0], id: 'DEMO-2', title: 'Active replacement work', url: 'https://linear.example.test/demo-workspace/issue/DEMO-2', relations: [{ type: 'parent', issueId: 'DEMO-1' }] };
+  const child = { ...snapshot.issues[0], id: 'DEMO-2', title: 'Active replacement work', url: 'https://linear.example.test/demo-workspace/issue/DEMO-2', relations: [{ type: 'parent', issueId: 'DEMO-1' }, { type: 'related', issueId: 'DEMO-1' }] };
   const state = { config, snapshot: { ...snapshot, issues: [parent, child] }, catalog: null, overlays: { archived: { 'DEMO-1': true } } };
   const html = renderShelf(state);
   assert.doesNotMatch(html, /DEMO-1|>Canceled</);

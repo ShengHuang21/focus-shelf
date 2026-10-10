@@ -32,9 +32,14 @@ const statusOptions = [
   ['merged', 'Merged'],
   ['closed', 'Closed'],
 ];
-const visibleIssues = snapshot => (snapshot?.issues ?? []).filter(item =>
-  item.status.type !== 'canceled' && !['cancel', 'canceled', 'cancelled'].includes(item.status.name.trim().toLowerCase())
-);
+const visibleIssues = snapshot => {
+  const issues = snapshot?.issues ?? [];
+  const canceled = new Set(issues.filter(item => item.status.type === 'canceled'
+    || ['cancel', 'canceled', 'cancelled'].includes(item.status.name.trim().toLowerCase())).map(item => item.id));
+  return issues.filter(item => !canceled.has(item.id)).map(item => ({
+    ...item, relations: item.relations.filter(edge => !canceled.has(edge.issueId)),
+  }));
+};
 const groups = [
   { key: 'planned', label: 'Upcoming', symbol: '◷', types: new Set(['triage', 'unstarted']) },
   { key: 'current', label: 'Current work', symbol: '⚡', types: new Set(['started']) },
