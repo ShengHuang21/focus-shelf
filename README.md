@@ -11,6 +11,7 @@ Work-state placement also accounts for unfinished delivery: an owned ticket or t
 ### Colleague prerequisites
 
 - Node 22+ and a current browser with Web Locks support.
+- The built-in Chrome link-opening helper currently requires macOS with Google Chrome installed. Other host platforms have not been validated for that helper; the repository does not promise cross-platform Chrome launching.
 - The two bundled Skills: `skills/focus-shelf` for collection and refresh, and `skills/generate-focus-shelf-icon` for topic illustrations. No personal `manage-focus-shelf` Skill is required.
 - An authorized Linear MCP/connector in the colleague's Codex setup, with workspace access and complete paginated assigned/created issues, creator identity, children, comments, Sprint and estimate reads. The repository does not install connectors or log in for you.
 - For PR/CI enrichment, an authorized GitHub MCP/connector or authenticated GitHub CLI with access to the relevant repositories and current-head checks. Without this access, PR/CI coverage is explicitly unavailable; it is not treated as zero PRs or passing CI.
