@@ -161,7 +161,7 @@ function renderIssue(item, context) {
   const thumbnailState = String(item.status.name).trim().toUpperCase() === 'ON HOLD' ? ' ticket-thumbnail-on-hold' : '';
   const memo = overlays.memos?.[item.id] ?? '';
   const estimate = Number.isSafeInteger(item.estimate)
-    ? `<span class="estimate-points" title="Linear estimate: ${item.estimate} point${item.estimate === 1 ? '' : 's'}" aria-label="Linear estimate ${item.estimate} point${item.estimate === 1 ? '' : 's'}">${item.estimate}</span>`
+    ? `<span class="estimate-points" title="Estimate: ${item.estimate} point${item.estimate === 1 ? '' : 's'}" aria-label="Estimate: ${item.estimate} point${item.estimate === 1 ? '' : 's'}">${item.estimate}</span>`
     : '';
   const category = context.categories.get(item.id);
   const assignee = `${issueAssignee(item)}${archived ? ' · archived' : ''}`;
