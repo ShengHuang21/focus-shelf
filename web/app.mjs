@@ -279,7 +279,7 @@ export function renderShelf({ config, snapshot, catalog, dri, overlays = {}, rea
     const items = visibleRoots.filter(item => group.types.has(familyGroupType(item, children, overlays, categories, catalog)));
     if (!items.length) return '';
     const context = { byId, children, catalog, overlays, readOnly, maps, categories, snapshotGeneratedAt: snapshot?.generatedAt, revealIssueId };
-    if (group.key === 'completed' || group.key === 'planned') {
+    if (['completed', 'planned', 'current'].includes(group.key)) {
       const reveal = revealIssueId && items.some(item => familyHasIssue(item, revealIssueId, children, overlays));
       return `<details class="focus-group focus-group-${group.key}" data-fold="group:${group.key}"${reveal ? ' open' : ''}><summary><span>${group.symbol}</span>${group.label}</summary><div class="sprint-groups">${renderSprintGroups(items, context)}</div></details>`;
     }

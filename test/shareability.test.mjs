@@ -140,7 +140,8 @@ test('C11 a completed Linear ticket stays in Current work while an associated PR
     pullRequests: [{ ...catalogV2.pullRequests[0], issueId: done.id, state: 'open' }],
   };
   const html = renderShelf({ config, snapshot: { ...snapshot, issues: [done] }, catalog: activeCatalog });
-  assert.match(html, /<section class="focus-group focus-group-current">[^]*DEMO-1/);
+  assert.match(html, /<details class="focus-group focus-group-current" data-fold="group:current">[^]*DEMO-1/);
+  assert.match(renderShelf({ config, snapshot: { ...snapshot, issues: [done] }, catalog: activeCatalog, revealIssueId: done.id }), /data-fold="group:current" open/);
   assert.match(html, /status-pill status-completed[^>]*>Done</);
   assert.doesNotMatch(html, /focus-group-completed/);
 });
@@ -415,7 +416,7 @@ test('C11 EQA remains Current work but has its own pink Linear-status treatment'
   const value = structuredClone(snapshot);
   value.issues[0].status = { name: 'EQA', type: 'started' };
   const html = renderShelf({ config, snapshot: value, catalog });
-  assert.match(html, /<h2><span>⚡<\/span>Current work<\/h2>/);
+  assert.match(html, /<details class="focus-group focus-group-current" data-fold="group:current"><summary><span>⚡<\/span>Current work<\/summary>/);
   assert.match(html, /status-mark status-eqa[^>]*title="Observed Linear status: EQA"/);
   assert.match(html, /status-pill status-eqa[^>]*>EQA<\/span>/);
   const css = await readFile(join(root, 'web/styles.css'), 'utf8');
