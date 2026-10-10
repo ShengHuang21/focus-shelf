@@ -149,6 +149,7 @@ function renderIssue(item, context) {
   const presentation = maps.tickets.get(item.id);
   const hasDri = Boolean(presentation?.workstream && maps.workstreams.get(presentation.workstream));
   const icon = presentation?.icon ?? 'ticket';
+  const thumbnailTone = presentation?.tone === 'neutral' ? 'blue' : presentation?.tone;
   const thumbnailState = String(item.status.name).trim().toUpperCase() === 'ON HOLD' ? ' ticket-thumbnail-on-hold' : '';
   const memo = overlays.memos?.[item.id] ?? '';
   const estimate = Number.isSafeInteger(item.estimate)
@@ -159,13 +160,13 @@ function renderIssue(item, context) {
   const assigneeTitle = item.assignee?.name ? ` title="${escape(`Full Linear assignee: ${item.assignee.name}`)}"` : '';
   const delegated = nested && category === 'context' && Boolean(item.assignee?.id);
   const parentSprint = hasDri && childItems.length > 0 ? item.sprint : null;
-  const createdOwnership = category === 'created'
+  const createdOwnership = category === 'created' && item.assignee?.id
     ? `<span class="ownership-created">Created</span><span class="ownership-arrow">→</span><span class="ownership-assigned"${assigneeTitle}>Assigned to ${escape(formatAssigneeName(item.assignee?.name))}${archived ? ' · archived' : ''}</span>`
     : `<span${assigneeTitle}>${escape(assignee)}</span>`;
   const ownership = hasDri
     ? ''
     : `<div class="ticket-ownership">${createdOwnership}${item.sprint ? `<span>· Sprint: ${escape(item.sprint.name)}</span>` : ''}</div>`;
-  const body = `${ownership}${renderDri(presentation, maps, parentSprint)}<div class="ticket-heading">${presentation ? `<div class="ticket-thumbnail ticket-thumbnail-${escape(presentation.tone)}${thumbnailState}" role="img" aria-label="${escape(`${presentation.label} · ${presentation.description}`)}" title="${escape(presentation.description)}"><span class="ticket-thumbnail-icon">${renderTicketIcon(icon)}</span><span>${escape(presentation.label)}</span></div>` : ''}<div class="ticket-main"><div class="ticket-row">${link(item.url, item.id, 'issue-link')}${estimate}<span class="status-mark status-${statusTone(item.status.type, item.status.name)}" title="Observed Linear status: ${escape(item.status.name)}"></span><button class="archive-action" data-archive="${escape(item.id)}" ${readOnly ? 'disabled' : ''}>${archived ? 'Restore' : 'Archive'}</button></div><h3>${escape(item.title)}</h3></div></div><div class="memo-row"><span class="status-pill status-${statusTone(item.status.type, item.status.name)}" title="Read-only Linear status">${escape(item.status.name)}</span><span class="memo-label">Memo</span><textarea rows="1" data-memo="${escape(item.id)}" placeholder="None" ${readOnly ? 'disabled' : ''}>${escape(memo)}</textarea></div>${renderPRs(item, catalog, overlays, readOnly, maps)}${renderReferences(item, byId)}`;
+  const body = `${ownership}${renderDri(presentation, maps, parentSprint)}<div class="ticket-heading">${presentation ? `<div class="ticket-thumbnail ticket-thumbnail-${escape(thumbnailTone)}${thumbnailState}" role="img" aria-label="${escape(`${presentation.label} · ${presentation.description}`)}" title="${escape(presentation.description)}"><span class="ticket-thumbnail-icon">${renderTicketIcon(icon)}</span><span>${escape(presentation.label)}</span></div>` : ''}<div class="ticket-main"><div class="ticket-row">${link(item.url, item.id, 'issue-link')}${estimate}<span class="status-mark status-${statusTone(item.status.type, item.status.name)}" title="Observed Linear status: ${escape(item.status.name)}"></span><button class="archive-action" data-archive="${escape(item.id)}" ${readOnly ? 'disabled' : ''}>${archived ? 'Restore' : 'Archive'}</button></div><h3>${escape(item.title)}</h3></div></div><div class="memo-row"><span class="status-pill status-${statusTone(item.status.type, item.status.name)}" title="Read-only Linear status">${escape(item.status.name)}</span><span class="memo-label">Memo</span><textarea rows="1" data-memo="${escape(item.id)}" placeholder="None" ${readOnly ? 'disabled' : ''}>${escape(memo)}</textarea></div>${renderPRs(item, catalog, overlays, readOnly, maps)}${renderReferences(item, byId)}`;
   const card = !childItems.length
     ? `<article class="ticket-card${nested ? ' ticket-child' : ''}">${body}</article>`
     : `<article class="ticket-card ticket-family${nested ? ' ticket-child' : ''}">${body}<div class="handled-by"><span class="relationship-symbol relationship-symbol-child">Child</span><span>tasks ↓</span></div><div class="ticket-children">${childItems.map(child => renderIssue(child, { ...context, nested: true })).join('')}</div></article>`;

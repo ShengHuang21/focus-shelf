@@ -174,6 +174,24 @@ test('C11 a ticket created by the profile remains visible after reassignment', (
   assert.match(report, /In Progress\n• DEMO-1/);
 });
 
+test('C11 a created unassigned ticket has only the Unassigned ownership label', () => {
+  const value = { ...snapshot, createdIssueIds: ['DEMO-1'], issues: [{ ...snapshot.issues[0], assignee: null }] };
+  const html = renderShelf({ config, snapshot: value, catalog: null });
+  assert.match(html, /ticket-ownership"><span>Unassigned<\/span>/);
+  assert.doesNotMatch(html, /ownership-created|ownership-arrow|Assigned to Unassigned/);
+});
+
+test('C11 neutral topic color defaults to blue regardless of ticket group', () => {
+  const presentation = { ...catalog.presentation, tickets: [{ issueId: 'DEMO-1', label: 'Demo', icon: 'ticket', tone: 'neutral', description: 'Synthetic topic' }] };
+  for (const [name, type] of [['Todo', 'unstarted'], ['Backlog', 'backlog'], ['Done', 'completed']]) {
+    const html = renderShelf({ config, snapshot: { ...snapshot, issues: [{ ...snapshot.issues[0], status: { name, type } }] }, catalog: { ...catalog, presentation } });
+    assert.match(html, /ticket-thumbnail ticket-thumbnail-blue/);
+    assert.doesNotMatch(html, /ticket-thumbnail-neutral|ticket-thumbnail-on-hold/);
+  }
+  const held = renderShelf({ config, snapshot: { ...snapshot, issues: [{ ...snapshot.issues[0], status: { name: 'On Hold', type: 'backlog' } }] }, catalog: { ...catalog, presentation } });
+  assert.match(held, /ticket-thumbnail-blue ticket-thumbnail-on-hold/);
+});
+
 test('C11 other-owner child work is collapsed without exposing internal context labels', () => {
   const parent = { ...snapshot.issues[0], id: 'DEMO-10', uuid: '00000000-0000-4000-8000-000000000010', title: 'Profile owner parent', url: 'https://linear.example.test/demo-workspace/issue/DEMO-10', relations: [{ type: 'child', issueId: 'DEMO-11' }] };
   const delegated = { ...snapshot.issues[0], id: 'DEMO-11', uuid: '00000000-0000-4000-8000-000000000011', title: 'Delegated trial task', url: 'https://linear.example.test/demo-workspace/issue/DEMO-11', assignee: { id: 'other-owner', name: 'Other Owner' }, relations: [{ type: 'parent', issueId: 'DEMO-10' }] };
