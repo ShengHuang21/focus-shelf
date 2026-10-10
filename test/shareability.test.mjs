@@ -8,6 +8,22 @@ import { config, snapshot, catalog, dri, snapshotV2, catalogV2 } from './helpers
 
 const root = new URL('..', import.meta.url).pathname;
 
+test('Canceled work is omitted from shelf, archive and reports without hiding active descendants', () => {
+  const parent = { ...snapshot.issues[0], status: { name: 'Canceled', type: 'canceled' }, relations: [{ type: 'child', issueId: 'DEMO-2' }] };
+  const child = { ...snapshot.issues[0], id: 'DEMO-2', title: 'Active replacement work', url: 'https://linear.example.test/demo-workspace/issue/DEMO-2', relations: [{ type: 'parent', issueId: 'DEMO-1' }] };
+  const state = { config, snapshot: { ...snapshot, issues: [parent, child] }, catalog: null, overlays: { archived: { 'DEMO-1': true } } };
+  const html = renderShelf(state);
+  assert.doesNotMatch(html, /DEMO-1|>Canceled</);
+  assert.match(html, /DEMO-2/);
+  assert.match(html, /Archive · 0/);
+  assert.doesNotMatch(createReport(state), /DEMO-1/);
+  assert.match(createReport(state), /DEMO-2/);
+  assert.doesNotMatch(createReportHtml(state), /DEMO-1/);
+  for (const name of ['Cancel', 'Cancelled', 'Canceled']) {
+    assert.doesNotMatch(renderShelf({ config, snapshot: { ...snapshot, issues: [{ ...parent, relations: [], status: { name, type: 'canceled' } }] }, catalog: null }), /DEMO-1/);
+  }
+});
+
 test('C11 rendering treats supplied titles and memo as text; report remains local', () => {
   const unsafe = { ...snapshot, issues: [{ ...snapshot.issues[0], title: '<img src=x onerror=alert(1)>' }] };
   const html = renderShelf({ config, snapshot: unsafe, catalog: null });

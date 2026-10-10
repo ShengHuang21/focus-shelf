@@ -32,6 +32,9 @@ const statusOptions = [
   ['merged', 'Merged'],
   ['closed', 'Closed'],
 ];
+const visibleIssues = snapshot => (snapshot?.issues ?? []).filter(item =>
+  item.status.type !== 'canceled' && !['cancel', 'canceled', 'cancelled'].includes(item.status.name.trim().toLowerCase())
+);
 const groups = [
   { key: 'planned', label: 'Upcoming', symbol: '◷', types: new Set(['triage', 'unstarted']) },
   { key: 'current', label: 'Current work', symbol: '⚡', types: new Set(['started']) },
@@ -248,7 +251,7 @@ export function createUpdateRequest() {
 }
 
 export function renderShelf({ config, snapshot, catalog, dri, overlays = {}, readOnly = true, readOnlyReason = '', saveState = 'idle', revealIssueId = null }) {
-  const issues = snapshot?.issues ?? [];
+  const issues = visibleIssues(snapshot);
   const byId = new Map(issues.map(item => [item.id, item]));
   const categories = new Map(issues.map(item => [item.id, issueCategory(item, snapshot)]));
   const children = new Map();
@@ -295,7 +298,7 @@ const reportHtmlLink = (url, label) => safeURL(url) ? `<a href="${escape(url)}">
 
 function createReportModel({ snapshot, catalog, overlays = {} }) {
   const excluded = new Set(catalog?.presentation?.report?.excludedIssueIds ?? []);
-  const issues = snapshot?.issues ?? [];
+  const issues = visibleIssues(snapshot);
   const byId = new Map(issues.map(item => [item.id, item]));
   const children = new Map();
   const childIds = new Set();
