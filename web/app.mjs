@@ -24,6 +24,7 @@ export function formatAssigneeName(value) {
 const issueAssignee = item => item.assignee?.name ? `Assignee: ${formatAssigneeName(item.assignee.name)}` : 'Unassigned';
 const statusTone = (type, name = '') => String(name).trim().toUpperCase() === 'EQA'
   ? 'eqa'
+  : type === 'duplicate' ? 'canceled'
   : ['started', 'completed', 'canceled', 'backlog', 'triage', 'unstarted'].includes(type) ? type : 'unknown';
 const statusOptions = [
   ['open', 'Open'],
@@ -35,7 +36,7 @@ const groups = [
   { key: 'planned', label: 'Upcoming', symbol: '◷', types: new Set(['triage', 'unstarted']) },
   { key: 'current', label: 'Current work', symbol: '⚡', types: new Set(['started']) },
   { key: 'backlog', label: 'Backlog', symbol: '≡', types: new Set(['backlog']) },
-  { key: 'completed', label: 'Completed', symbol: '✓', types: new Set(['completed', 'canceled']) },
+  { key: 'completed', label: 'Completed', symbol: '✓', types: new Set(['completed', 'canceled', 'duplicate']) },
 ];
 
 const ticketIcons = {

@@ -36,6 +36,19 @@ test('v2 created seed keeps a ticket after its assignee changes', () => {
   assert.throws(() => validateSnapshot(missingCreatedSeed, config), /context unreachable/);
 });
 
+test('duplicate status and duplicate/block relations preserve their exact meaning', () => {
+  const value = structuredClone(snapshotV2);
+  value.issues[3].status = { name: 'Duplicate', type: 'duplicate' };
+  value.issues[3].relations.push({ type: 'duplicateOf', issueId: 'DEMO-1' }, { type: 'blocks', issueId: 'DEMO-2' });
+  assert.deepEqual(validateSnapshot(value, config), value);
+  assert.deepEqual(buildSnapshotV2(value, config), value);
+  const html = renderShelf({ config, snapshot: value, catalog: null });
+  assert.match(html, /status-pill status-canceled[^>]*>Duplicate/);
+  assert.match(html, /focus-group-completed/);
+  assert.match(html, /reference-type">duplicateOf/);
+  assert.match(html, /reference-type">blocks/);
+});
+
 test('optional Linear estimate is validated and rendered as a numbered circle', () => {
   const value = structuredClone(snapshotV2);
   value.issues[0].estimate = 3;

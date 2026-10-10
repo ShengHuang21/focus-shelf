@@ -15,6 +15,7 @@ Work-state placement also accounts for unfinished delivery: an owned ticket or t
 - The two bundled Skills: `skills/focus-shelf` for collection and refresh, and `skills/generate-focus-shelf-icon` for topic illustrations. No personal `manage-focus-shelf` Skill is required.
 - An authorized Linear MCP/connector in the colleague's Codex setup, with workspace access and complete paginated assigned/created issues, creator identity, children, comments, Sprint and estimate reads. The repository does not install connectors or log in for you.
 - For PR/CI enrichment, an authorized GitHub MCP/connector or authenticated GitHub CLI with access to the relevant repositories and current-head checks. Without this access, PR/CI coverage is explicitly unavailable; it is not treated as zero PRs or passing CI.
+- Provide or verify your GitHub login with Codex before attributing PRs to your profile. A similar-looking username, a linked ticket or a merge actor is not proof of personal PR ownership. Unresolved identity is reported, not guessed.
 - A separate external local data directory and stable browser origin for each profile. Never upload real snapshots, DRI maps or personal browser data to this repository.
 
 The shared validator accepts at most 1,000 final tickets and 5,000 entries per catalog collection. These are safety limits, not permission to truncate a larger collection. A limit or access failure preserves the last complete snapshot.
