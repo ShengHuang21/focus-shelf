@@ -8,6 +8,17 @@ import { config, snapshot, catalog, dri, snapshotV2, catalogV2 } from './helpers
 
 const root = new URL('..', import.meta.url).pathname;
 
+test('Backlog and Past Sprint fold independently and reveal restores both levels', () => {
+  const issue = { ...snapshot.issues[0], status: { name: 'Backlog', type: 'backlog' }, sprint: { name: 'Old sprint', startDate: '2026-09-01T00:00:00.000Z', endDate: '2026-09-10T00:00:00.000Z' } };
+  const state = { config, snapshot: { ...snapshot, generatedAt: '2026-10-10T00:00:00.000Z', issues: [issue] }, catalog: null };
+  const html = renderShelf(state);
+  assert.match(html, /data-fold="group:backlog"><summary>/);
+  assert.match(html, /<details class="sprint-group sprint-group-past" data-fold="sprint:backlog:[^"]+"><summary>Past Sprint · Old sprint<\/summary>/);
+  const revealed = renderShelf({ ...state, revealIssueId: issue.id });
+  assert.match(revealed, /data-fold="group:backlog" open/);
+  assert.match(revealed, /data-fold="sprint:backlog:[^"]+" open/);
+});
+
 test('Estimate circles explicitly identify points in their hover tooltip', () => {
   for (const points of [0, 1, 3]) {
     const html = renderShelf({ config, snapshot: { ...snapshot, issues: [{ ...snapshot.issues[0], estimate: points }] }, catalog: null });

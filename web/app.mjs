@@ -247,6 +247,8 @@ function renderSprintGroups(items, context) {
     .sort((left, right) => left.rank - right.rank || left.start.localeCompare(right.start) || left.label.localeCompare(right.label))
     .map(group => group.kind === 'none'
       ? `<div class="group-items sprint-group-none">${group.items.map(item => renderIssue(item, context)).join('')}</div>`
+      : group.kind === 'past'
+        ? `<details class="sprint-group sprint-group-past" data-fold="sprint:${escape(context.workGroup)}:${escape(group.key)}"${context.revealIssueId && group.items.some(item => familyHasIssue(item, context.revealIssueId, context.children, context.overlays)) ? ' open' : ''}><summary>${escape(group.label)}</summary><div class="group-items">${group.items.map(item => renderIssue(item, context)).join('')}</div></details>`
       : `<section class="sprint-group sprint-group-${escape(group.kind)}"><h3>${escape(group.label)}</h3><div class="group-items">${group.items.map(item => renderIssue(item, context)).join('')}</div></section>`)
     .join('');
 }
@@ -278,12 +280,9 @@ export function renderShelf({ config, snapshot, catalog, dri, overlays = {}, rea
   const renderedGroups = groups.map(group => {
     const items = visibleRoots.filter(item => group.types.has(familyGroupType(item, children, overlays, categories, catalog)));
     if (!items.length) return '';
-    const context = { byId, children, catalog, overlays, readOnly, maps, categories, snapshotGeneratedAt: snapshot?.generatedAt, revealIssueId };
-    if (['completed', 'planned', 'current'].includes(group.key)) {
-      const reveal = revealIssueId && items.some(item => familyHasIssue(item, revealIssueId, children, overlays));
-      return `<details class="focus-group focus-group-${group.key}" data-fold="group:${group.key}"${reveal ? ' open' : ''}><summary><span>${group.symbol}</span>${group.label}</summary><div class="sprint-groups">${renderSprintGroups(items, context)}</div></details>`;
-    }
-    return `<section class="focus-group focus-group-${escape(group.key)}"><h2><span>${group.symbol}</span>${group.label}</h2><div class="sprint-groups">${renderSprintGroups(items, context)}</div></section>`;
+    const context = { byId, children, catalog, overlays, readOnly, maps, categories, snapshotGeneratedAt: snapshot?.generatedAt, revealIssueId, workGroup: group.key };
+    const reveal = revealIssueId && items.some(item => familyHasIssue(item, revealIssueId, children, overlays));
+    return `<details class="focus-group focus-group-${group.key}" data-fold="group:${group.key}"${reveal ? ' open' : ''}><summary><span>${group.symbol}</span>${group.label}</summary><div class="sprint-groups">${renderSprintGroups(items, context)}</div></details>`;
   }).join('');
   const empty = '<section class="empty"><h2>Your shelf is ready</h2><p>No issues yet. Configure your local profile and explicitly ask Codex to refresh a snapshot.</p></section>';
   const archive = `<details id="archive-section" class="archive-section"><summary>Archive · ${archivedCount}</summary><p>Only manually archived tickets appear here.</p><div class="archive-list">${archivedItems.map(item => renderIssue(item, { byId, children: new Map(), catalog, overlays, readOnly, maps, categories })).join('')}</div></details>`;

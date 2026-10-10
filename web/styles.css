@@ -56,6 +56,10 @@ nav { display: flex; flex-wrap: wrap; gap: 8px; min-width: 0; }
 .sprint-group-current > h3 { border-left-color: var(--blue); color: var(--blue); background: var(--blue-bg); }
 .sprint-group-upcoming > h3 { border-left-color: var(--purple); color: var(--purple); background: #f6f2ff; }
 .sprint-group-past > h3 { border-left-color: #9ca3af; color: var(--muted); background: #f4f4f5; }
+.sprint-group-past > summary { padding: 5px 9px; border-left: 3px solid #9ca3af; border-radius: 0 6px 6px 0; color: var(--muted); background: #f4f4f5; font-size: .72rem; font-weight: 700; line-height: 1.35; cursor: pointer; }
+.sprint-group-past[open] > summary { margin-bottom: 6px; }
+.sprint-group-past > summary:hover { background: var(--line); }
+.sprint-group-past > summary:focus-visible { outline: 2px solid var(--blue); outline-offset: 3px; }
 .sprint-group-mixed > h3 { border-left-color: var(--amber); color: #725a00; background: #fffae9; }
 .group-items { display: grid; gap: 8px; }
 .ticket-card { min-width: 0; padding: 11px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); box-shadow: 0 0 0 1px #00000005; }
