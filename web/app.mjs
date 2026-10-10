@@ -166,10 +166,11 @@ function renderIssue(item, context) {
   const ownership = hasDri
     ? ''
     : `<div class="ticket-ownership">${createdOwnership}${item.sprint ? `<span>· Sprint: ${escape(item.sprint.name)}</span>` : ''}</div>`;
+  const revealChild = context.revealIssueId && childItems.some(child => familyHasIssue(child, context.revealIssueId, children, overlays));
   const body = `${ownership}${renderDri(presentation, maps, parentSprint)}<div class="ticket-heading">${presentation ? `<div class="ticket-thumbnail ticket-thumbnail-${escape(thumbnailTone)}${thumbnailState}" role="img" aria-label="${escape(`${presentation.label} · ${presentation.description}`)}" title="${escape(presentation.description)}"><span class="ticket-thumbnail-icon">${renderTicketIcon(icon)}</span><span>${escape(presentation.label)}</span></div>` : ''}<div class="ticket-main"><div class="ticket-row">${link(item.url, item.id, 'issue-link')}${estimate}<span class="status-mark status-${statusTone(item.status.type, item.status.name)}" title="Observed Linear status: ${escape(item.status.name)}"></span><button class="archive-action" data-archive="${escape(item.id)}" ${readOnly ? 'disabled' : ''}>${archived ? 'Restore' : 'Archive'}</button></div><h3>${escape(item.title)}</h3></div></div><div class="memo-row"><span class="status-pill status-${statusTone(item.status.type, item.status.name)}" title="Read-only Linear status">${escape(item.status.name)}</span><span class="memo-label">Memo</span><textarea rows="1" data-memo="${escape(item.id)}" placeholder="None" ${readOnly ? 'disabled' : ''}>${escape(memo)}</textarea></div>${renderPRs(item, catalog, overlays, readOnly, maps)}${renderReferences(item, byId)}`;
   const card = !childItems.length
     ? `<article class="ticket-card${nested ? ' ticket-child' : ''}">${body}</article>`
-    : `<article class="ticket-card ticket-family${nested ? ' ticket-child' : ''}">${body}<div class="handled-by"><span class="relationship-symbol relationship-symbol-child">Child</span><span>tasks ↓</span></div><div class="ticket-children">${childItems.map(child => renderIssue(child, { ...context, nested: true })).join('')}</div></article>`;
+    : `<article class="ticket-card ticket-family${nested ? ' ticket-child' : ''}">${body}<details class="child-task-fold" data-fold="children:${escape(item.id)}"${revealChild ? ' open' : ''}><summary class="handled-by"><span class="relationship-symbol relationship-symbol-child">Child</span><span>tasks</span><span class="fold-chevron" aria-hidden="true"></span></summary><div class="ticket-children">${childItems.map(child => renderIssue(child, { ...context, nested: true })).join('')}</div></details></article>`;
   if (!delegated) return card;
   const reveal = context.revealIssueId && familyHasIssue(item, context.revealIssueId, children, overlays);
   return `<details class="delegated-ticket"${reveal ? ' open' : ''}><summary><span class="delegated-id">${escape(item.id)}</span><span class="delegated-title">${escape(item.title)}</span><span class="delegated-assignee"${assigneeTitle}>${escape(issueAssignee(item))}</span><span class="status-pill status-${statusTone(item.status.type, item.status.name)}">${escape(item.status.name)}</span></summary>${card}</details>`;
@@ -270,9 +271,9 @@ export function renderShelf({ config, snapshot, catalog, dri, overlays = {}, rea
     const items = visibleRoots.filter(item => group.types.has(familyGroupType(item, children, overlays, categories, catalog)));
     if (!items.length) return '';
     const context = { byId, children, catalog, overlays, readOnly, maps, categories, snapshotGeneratedAt: snapshot?.generatedAt, revealIssueId };
-    if (group.key === 'completed') {
+    if (group.key === 'completed' || group.key === 'planned') {
       const reveal = revealIssueId && items.some(item => familyHasIssue(item, revealIssueId, children, overlays));
-      return `<details class="focus-group focus-group-completed"${reveal ? ' open' : ''}><summary><span>${group.symbol}</span>${group.label}</summary><div class="sprint-groups">${renderSprintGroups(items, context)}</div></details>`;
+      return `<details class="focus-group focus-group-${group.key}" data-fold="group:${group.key}"${reveal ? ' open' : ''}><summary><span>${group.symbol}</span>${group.label}</summary><div class="sprint-groups">${renderSprintGroups(items, context)}</div></details>`;
     }
     return `<section class="focus-group focus-group-${escape(group.key)}"><h2><span>${group.symbol}</span>${group.label}</h2><div class="sprint-groups">${renderSprintGroups(items, context)}</div></section>`;
   }).join('');
@@ -362,7 +363,11 @@ if (typeof document !== 'undefined') {
     shelf = next; render();
   }
   function render(revealIssueId = null) {
+    const folds = new Map([...main.querySelectorAll('details[data-fold]')].map(node => [node.dataset.fold, node.open]));
     main.innerHTML = renderShelf({ ...shelf, overlays: client.getOverlays(), readOnly: client.readOnly, readOnlyReason: client.readOnlyReason, saveState: client.saveState, revealIssueId });
+    main.querySelectorAll('details[data-fold]').forEach(node => {
+      if (!node.open && folds.has(node.dataset.fold)) node.open = folds.get(node.dataset.fold);
+    });
     const errors = () => { const node = main.querySelector('.local-status') ?? main.querySelector('.writer-notice'); node.hidden = false; node.textContent = `Save failed · ${client.readOnlyReason || 'Local storage or input unavailable'}`; node.classList.add('error'); };
     const action = (fn, reveal = null) => { try { fn(); render(reveal); if (reveal) main.querySelector(`[data-archive="${CSS.escape(reveal)}"]`)?.scrollIntoView({ block: 'center' }); } catch { errors(); } };
     main.querySelector('#takeover')?.addEventListener('click', async () => { await client.acquireWriter(); render(); });

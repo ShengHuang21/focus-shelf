@@ -67,7 +67,10 @@ test('C11 shared UI uses the canonical Focus Shelf hierarchy and compact visual 
   assert.match(html, /id="copy-slack-report">Copy Report<\/button>/);
   assert.match(html, /focus-group/);
   assert.match(html, /relationship-symbol relationship-symbol-child">Child/);
-  assert.match(html, /tasks ↓/);
+  assert.match(html, /<details class="child-task-fold" data-fold="children:DEMO-10"><summary class="handled-by">/);
+  assert.match(html, /<span>tasks<\/span>/);
+  const revealed = renderShelf({ ...state, revealIssueId: 'DEMO-11' });
+  assert.match(revealed, /data-fold="children:DEMO-10" open/);
   assert.match(html, /ticket-thumbnail/);
   assert.match(html, /<svg class="ticket-topic-icon"/);
   assert.doesNotMatch(html, /💬|↻|●/);
@@ -109,7 +112,7 @@ test('C11 archived tickets move into the collapsed Archive section without hidin
 test('C11 restoring a completed ticket opens its destination group instead of making it appear lost', () => {
   const done = { ...snapshot.issues[0], status: { name: 'Done', type: 'completed' } };
   const restored = renderShelf({ config, snapshot: { ...snapshot, issues: [done] }, catalog, overlays: { archived: { 'DEMO-1': false } }, revealIssueId: 'DEMO-1' });
-  assert.match(restored, /<details class="focus-group focus-group-completed" open>/);
+  assert.match(restored, /<details class="focus-group focus-group-completed" data-fold="group:completed" open>/);
   assert.match(restored, /DEMO-1/);
   assert.match(restored, /data-archive="DEMO-1"[^>]*>Archive<\/button>/);
 });
@@ -133,7 +136,7 @@ test('C11 a completed Linear ticket moves into Completed after all associated PR
     pullRequests: [{ ...catalogV2.pullRequests[0], issueId: done.id, state: 'merged' }],
   };
   const html = renderShelf({ config, snapshot: { ...snapshot, issues: [done] }, catalog: mergedCatalog });
-  assert.match(html, /<details class="focus-group focus-group-completed">[^]*DEMO-1/);
+  assert.match(html, /<details class="focus-group focus-group-completed" data-fold="group:completed">[^]*DEMO-1/);
   assert.doesNotMatch(html, /focus-group-current/);
 });
 
@@ -219,8 +222,8 @@ test('C11 another owner context child cannot promote completed profile work into
   const delegated = { ...snapshot.issues[0], id: 'DEMO-11', uuid: '00000000-0000-4000-8000-000000000011', title: 'Other owner active context', url: 'https://linear.example.test/demo-workspace/issue/DEMO-11', status: { name: 'In Progress', type: 'started' }, assignee: { id: 'other-owner', name: 'Other Owner' }, relations: [{ type: 'parent', issueId: 'DEMO-10' }] };
   const value = { ...snapshot, schemaVersion: 2, scope: 'assigned-followed-context', followedIssueIds: [], issues: [parent, delegated] };
   const html = renderShelf({ config, snapshot: value, catalog: null });
-  const current = html.slice(html.indexOf('Current work'), html.indexOf('<details class="focus-group focus-group-completed">'));
-  const completed = html.slice(html.indexOf('<details class="focus-group focus-group-completed">'));
+  const current = html.slice(html.indexOf('Current work'), html.indexOf('<details class="focus-group focus-group-completed" data-fold="group:completed">'));
+  const completed = html.slice(html.indexOf('<details class="focus-group focus-group-completed" data-fold="group:completed">'));
   assert.doesNotMatch(current, /Completed profile work|Other owner active context/);
   assert.match(completed, /Completed profile work/);
   assert.match(completed, /Other owner active context/);
@@ -229,8 +232,8 @@ test('C11 another owner context child cannot promote completed profile work into
 test('C11 standalone completed work is collapsed by default', () => {
   const done = { ...snapshot.issues[0], status: { name: 'Done', type: 'completed' } };
   const html = renderShelf({ config, snapshot: { ...snapshot, issues: [done] }, catalog });
-  assert.match(html, /<details class="focus-group focus-group-completed"><summary><span>✓<\/span>Completed<\/summary>/);
-  assert.doesNotMatch(html, /<details class="focus-group focus-group-completed" open>/);
+  assert.match(html, /<details class="focus-group focus-group-completed" data-fold="group:completed"><summary><span>✓<\/span>Completed<\/summary>/);
+  assert.doesNotMatch(html, /<details class="focus-group focus-group-completed" data-fold="group:completed" open>/);
 });
 
 test('C11 Upcoming is displayed before Current work and Backlog while Todo uses amber distinct from Done green', async () => {
@@ -240,7 +243,8 @@ test('C11 Upcoming is displayed before Current work and Backlog while Todo uses 
   const html = renderShelf({ config, snapshot: { ...snapshot, followedIssueIds: ['DEMO-10', 'DEMO-11', 'DEMO-12'], issues: [upcoming, current, backlog] }, catalog: null });
   assert.ok(html.indexOf('>Upcoming<') < html.indexOf('>Current work<'));
   assert.ok(html.indexOf('>Current work<') < html.indexOf('>Backlog<'));
-  assert.match(html, /<section class="focus-group focus-group-planned"><h2><span>◷<\/span>Upcoming<\/h2>/);
+  assert.match(html, /<details class="focus-group focus-group-planned" data-fold="group:planned"><summary><span>◷<\/span>Upcoming<\/summary>/);
+  assert.match(renderShelf({ config, snapshot: { ...snapshot, issues: [upcoming] }, catalog: null, revealIssueId: upcoming.id }), /data-fold="group:planned" open/);
   const css = await readFile(join(root, 'web/styles.css'), 'utf8');
   assert.doesNotMatch(css, /\.focus-group-planned\s*>\s*h2/);
   assert.match(css, /\.status-pill\.status-unstarted\s*\{[^}]*color:\s*#845400;[^}]*background:\s*#fff0bd;/s);
