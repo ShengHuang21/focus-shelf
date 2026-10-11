@@ -18,7 +18,7 @@ test('C04/C05 API projects valid snapshot/catalog and rejects non-GET methods', 
   assert.deepEqual(Object.keys(state).sort(), ['availability', 'catalog', 'config', 'dri', 'schemaVersion', 'snapshot']);
   assert.deepEqual(state.snapshot, snapshot);
   assert.deepEqual(state.catalog, catalog);
-  assert.deepEqual(state.dri, dri);
+  assert.equal(state.dri.workstreams.length, 36);
   assert.equal(state.availability.snapshot, 'ready');
   assert.equal(state.availability.catalog, 'ready');
   for (const method of ['POST', 'PUT', 'DELETE']) {
@@ -57,7 +57,7 @@ test('C04/C05 API omits mismatched snapshot and invalid or sensitive catalog wit
   let state = JSON.parse(raw);
   assert.equal(state.snapshot, null);
   assert.equal(state.catalog, null);
-  assert.equal(state.dri, null);
+  assert.equal(state.dri.workstreams.length, 36);
   assert.equal(state.availability.snapshot, 'invalid');
   assert.doesNotMatch(raw, /SYNTHETIC_PRIVATE_SENTINEL|privateNote/);
   await writeFile(join(home, 'linear-latest.json'), JSON.stringify(snapshot));
@@ -81,7 +81,7 @@ test('clean checkout starts on loopback and displays empty state without credent
   assert.equal(response.status, 200);
   const html = await response.text();
   assert.match(html, /Focus Shelf/);
-  assert.match(html, /app\.mjs\?v=20261010\.17/);
+  assert.match(html, /app\.mjs\?v=20261011\.25/);
   const state = await (await fetch(`${server.origin}/api/shelf`)).json();
   assert.equal(state.schemaVersion, 1);
   assert.equal(state.snapshot, null);
@@ -98,11 +98,11 @@ test('configured external data is read without contacting a remote service', asy
   assert.deepEqual(state.config, config);
 });
 
-test('optional private DRI map is validated and invalid data is omitted', async t => {
+test('an explicit local DRI override is validated and invalid data is omitted', async t => {
   const home = await temporaryHome(t);
   await writeFile(join(home, 'config.json'), JSON.stringify(config));
   await writeFile(join(home, 'dri.json'), JSON.stringify(dri));
-  const server = await startServer({ home, port: 0 });
+  const server = await startServer({ home, teamHome: home, port: 0 });
   t.after(() => server.close());
   let state = await (await fetch(`${server.origin}/api/shelf`)).json();
   assert.deepEqual(state.dri, dri);
@@ -111,6 +111,46 @@ test('optional private DRI map is validated and invalid data is omitted', async 
   state = await (await fetch(`${server.origin}/api/shelf`)).json();
   assert.equal(state.dri, null);
   assert.equal(state.availability.dri, 'invalid');
+});
+
+test('bundled team DRI map is the default for profiles without an external team override', async t => {
+  const home = await temporaryHome(t);
+  await writeFile(join(home, 'config.json'), JSON.stringify(config));
+  await writeFile(join(home, 'dri.json'), JSON.stringify({ ...dri, workstreams: [] }));
+  const server = await startServer({ home, port: 0 });
+  t.after(() => server.close());
+  const state = await (await fetch(`${server.origin}/api/shelf`)).json();
+  assert.equal(state.availability.dri, 'ready');
+  assert.equal(state.dri.workstreams.length, 36);
+  assert.notDeepEqual(state.dri, { ...dri, workstreams: [] });
+});
+
+test('profiles share one external team DRI map and see its updates without copying', async t => {
+  const teamHome = await temporaryHome(t);
+  await writeFile(join(teamHome, 'dri.json'), JSON.stringify(dri));
+  const servers = [];
+  for (let index = 0; index < 2; index++) {
+    const home = await temporaryHome(t);
+    await writeFile(join(home, 'config.json'), JSON.stringify({ ...config, profileId: `demo-${index}` }));
+    await writeFile(join(home, 'dri.json'), JSON.stringify({ ...dri, workstreams: [] }));
+    servers.push(await startServer({ home, teamHome, port: 0 }));
+  }
+  t.after(() => Promise.all(servers.map(server => server.close())));
+  for (const server of servers) {
+    assert.deepEqual((await (await fetch(`${server.origin}/api/shelf`)).json()).dri, dri);
+  }
+  const updated = structuredClone(dri);
+  updated.workstreams[0].secondDri = 'Taylor';
+  await writeFile(join(teamHome, 'dri.json'), JSON.stringify(updated));
+  for (const server of servers) {
+    assert.deepEqual((await (await fetch(`${server.origin}/api/shelf`)).json()).dri, updated);
+  }
+  await writeFile(join(teamHome, 'dri.json'), JSON.stringify({ ...updated, token: 'SYNTHETIC_PRIVATE_SENTINEL' }));
+  for (const server of servers) {
+    const state = await (await fetch(`${server.origin}/api/shelf`)).json();
+    assert.equal(state.dri, null);
+    assert.equal(state.availability.dri, 'invalid');
+  }
 });
 
 test('occupied requested port fails safely', async t => {

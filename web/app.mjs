@@ -178,7 +178,7 @@ function renderIssue(item, context) {
   const body = `${ownership}${renderDri(presentation, maps, parentSprint)}<div class="ticket-heading">${presentation ? `<div class="ticket-thumbnail ticket-thumbnail-${escape(thumbnailTone)}${thumbnailState}" role="img" aria-label="${escape(`${presentation.label} · ${presentation.description}`)}" title="${escape(presentation.description)}"><span class="ticket-thumbnail-icon">${renderTicketIcon(icon)}</span><span>${escape(presentation.label)}</span></div>` : ''}<div class="ticket-main"><div class="ticket-row">${link(item.url, item.id, 'issue-link')}${estimate}<span class="status-mark status-${statusTone(item.status.type, item.status.name)}" title="Observed Linear status: ${escape(item.status.name)}"></span><button class="archive-action" data-archive="${escape(item.id)}" ${readOnly ? 'disabled' : ''}>${archived ? 'Restore' : 'Archive'}</button></div><h3>${escape(item.title)}</h3></div></div><div class="memo-row"><span class="status-pill status-${statusTone(item.status.type, item.status.name)}" title="Read-only Linear status">${escape(item.status.name)}</span><span class="memo-label">Memo</span><textarea rows="1" data-memo="${escape(item.id)}" placeholder="None" ${readOnly ? 'disabled' : ''}>${escape(memo)}</textarea></div>${renderPRs(item, catalog, overlays, readOnly, maps)}${renderReferences(item, byId)}`;
   const card = !childItems.length
     ? `<article class="ticket-card${nested ? ' ticket-child' : ''}">${body}</article>`
-    : `<article class="ticket-card ticket-family${nested ? ' ticket-child' : ''}">${body}<details class="child-task-fold" data-fold="children:${escape(item.id)}"${revealChild ? ' open' : ''}><summary class="handled-by"><span class="relationship-symbol relationship-symbol-child">Child</span><span>tasks</span><span class="fold-chevron" aria-hidden="true"></span></summary><div class="ticket-children">${childItems.map(child => renderIssue(child, { ...context, nested: true })).join('')}</div></details></article>`;
+    : `<article class="ticket-card ticket-family${nested ? ' ticket-child' : ''}">${body}<details class="child-task-fold" data-fold="children:${escape(item.id)}"${revealChild ? ' open' : ''}><summary class="handled-by"><span class="relationship-symbol relationship-symbol-child">Child</span><span>· ${childItems.length} ${childItems.length === 1 ? 'task' : 'tasks'}</span><span class="fold-chevron" aria-hidden="true"></span></summary><div class="ticket-children">${childItems.map(child => renderIssue(child, { ...context, nested: true })).join('')}</div></details></article>`;
   if (!delegated) return card;
   const reveal = context.revealIssueId && familyHasIssue(item, context.revealIssueId, children, overlays);
   return `<details class="delegated-ticket"${reveal ? ' open' : ''}><summary><span class="delegated-id">${escape(item.id)}</span><span class="delegated-title">${escape(item.title)}</span><span class="delegated-assignee"${assigneeTitle}>${escape(issueAssignee(item))}</span><span class="status-pill status-${statusTone(item.status.type, item.status.name)}">${escape(item.status.name)}</span></summary>${card}</details>`;
@@ -221,7 +221,28 @@ function familySprintGroup(item, children, overlays, observedAt) {
   return { key: `sprint:${key}`, kind, name: sprint.name, label: `${prefix} · ${sprint.name}`, rank, start: sprint.startDate };
 }
 
+function renderGroupedItems(items, context, sprintKey) {
+  if (!['current', 'backlog', 'planned'].includes(context.workGroup)) return items.map(item => renderIssue(item, context)).join('');
+  const ownership = [
+    { key: 'mine', label: 'Assigned to me', matches: item => context.categories.get(item.id) === 'assigned' },
+    { key: 'delegated', label: context.workGroup === 'planned' ? 'Assigned to others' : 'Created → Assigned to others', matches: item => context.workGroup === 'planned' ? item.assignee !== null && context.categories.get(item.id) !== 'assigned' : context.categories.get(item.id) === 'created' && item.assignee !== null },
+    { key: 'unassigned', label: 'Unassigned', matches: item => item.assignee === null },
+    { key: 'following', label: 'Following', matches: () => true },
+  ];
+  const visibleOwnership = context.workGroup === 'planned' ? ownership.filter(group => group.key !== 'following') : ownership;
+  const buckets = new Map(visibleOwnership.map(group => [group.key, []]));
+  for (const item of items) buckets.get(visibleOwnership.find(group => group.matches(item)).key).push(item);
+  return visibleOwnership.map(group => {
+    const members = buckets.get(group.key);
+    if (!members.length) return '';
+    const reveal = context.workGroup === 'current' || context.revealIssueId && members.some(item => familyHasIssue(item, context.revealIssueId, context.children, context.overlays));
+    return `<details class="ownership-group ownership-group-${group.key}" data-fold="ownership:${context.workGroup}:${escape(sprintKey)}:${group.key}"${reveal ? ' open' : ''}><summary>${escape(group.label)}</summary><div class="group-items">${members.map(item => renderIssue(item, context)).join('')}</div></details>`;
+  }).join('');
+}
+
 function renderSprintGroups(items, context) {
+  if (context.workGroup === 'backlog') return renderGroupedItems(items, context, 'none');
+  if (context.workGroup === 'planned') return renderGroupedItems(items, context, 'none');
   const completed = context.workGroup === 'completed';
   const sprintGroups = new Map();
   for (const item of items) {
@@ -241,16 +262,23 @@ function renderSprintGroups(items, context) {
   }
   return [...sprintGroups.values()]
     .sort((left, right) => left.rank - right.rank || (completed ? right.start.localeCompare(left.start) : left.start.localeCompare(right.start)) || left.label.localeCompare(right.label))
-    .map(group => group.kind === 'none'
-      ? `<div class="group-items sprint-group-none">${group.items.map(item => renderIssue(item, context)).join('')}</div>`
-      : completed || group.kind === 'past'
-        ? `<details class="sprint-group sprint-group-past" data-fold="sprint:${escape(context.workGroup)}:${escape(group.key)}"${context.revealIssueId && group.items.some(item => familyHasIssue(item, context.revealIssueId, context.children, context.overlays)) ? ' open' : ''}><summary>${escape(group.label)}</summary><div class="group-items">${group.items.map(item => renderIssue(item, context)).join('')}</div></details>`
-      : `<section class="sprint-group sprint-group-${escape(group.kind)}"><h3>${escape(group.label)}</h3><div class="group-items">${group.items.map(item => renderIssue(item, context)).join('')}</div></section>`)
+    .map(group => group.kind === 'none' && context.workGroup !== 'current'
+      ? `<div class="group-items sprint-group-none">${renderGroupedItems(group.items, context, group.key)}</div>`
+      : completed || group.kind === 'past' || ['current', 'backlog'].includes(context.workGroup)
+        ? `<details class="sprint-group sprint-group-past" data-fold="sprint:${escape(context.workGroup)}:${escape(group.key)}"${context.workGroup === 'current' || context.revealIssueId && group.items.some(item => familyHasIssue(item, context.revealIssueId, context.children, context.overlays)) ? ' open' : ''}><summary>${escape(group.label)}</summary><div class="group-items">${renderGroupedItems(group.items, context, group.key)}</div></details>`
+      : `<section class="sprint-group sprint-group-${escape(group.kind)}"><h3>${escape(group.label)}</h3><div class="group-items">${renderGroupedItems(group.items, context, group.key)}</div></section>`)
     .join('');
 }
 
 export function createUpdateRequest() {
-  return 'Please update my Focus Shelf. Collect the complete current Linear scope: issues assigned to me, issues I created and later reassigned, previously retained created or followed issues, and the full reciprocal child hierarchy. Re-verify each issue\'s Linear status, relationships, Sprint, estimate, verified Linear creation timestamps, exact associated PRs, current GitHub Merge/Closed state, and CI for the current PR head. Preserve browser-local Memo, Archive, and manual status for PRs that remain open. Treat a Release target policy failure as an attention warning, not a CI, test, build, or lint failure. Publish only after the complete snapshot and catalog both pass validation; then reload the live Focus Shelf page and verify the rendered results.';
+  return 'Please update my Focus Shelf using this repository\'s bundled focus-shelf and generate-focus-shelf-icon Skills and CODEX_SNAPSHOT.md, not personal defaults. Confirm the intended external home, profile, Linear owner/workspace and existing local origin. Collect the complete current Linear scope: issues assigned to me, all issues I created (including reassigned and unassigned issues), previously retained created or followed issues, and the full reciprocal child hierarchy; exhaust pagination. Re-verify Linear status, relationships, historical identifier aliases, Sprint start/end dates, estimate and verified Linear creation timestamps. Discover exact associated PRs from attachments, comments and GitHub references, then verify association and my PR responsibility separately using a confirmed GitHub identity; do not attribute other people\'s PRs to me or infer no PR from an incomplete search. Refresh current GitHub Merge/Closed state and complete CI for each current PR head. Treat a Release target policy failure as an attention warning, not a CI, test, build, or lint failure; skipped or unknown checks are not failures. Preserve browser-local Memo, Archive, and manual status for PRs that remain open. Retain verified PRs without silent disappearance, provide topic icons for every visible root, and reuse the private DRI map only where verified. Keep ticket status read-only; exclude Canceled/Duplicate cards and let the application own grouping, counts and formatting. Collect authoritative Sprint names and start/end dates for all issues, but group by Sprint only inside Current work and Completed. Current work uses Sprint (or No Sprint), then ownership; Completed puts the newest Sprint first and groups unsprinted families by verified creation month. Upcoming and Backlog group directly into Assigned to me, Assigned to others, and Unassigned; show To Do/Triage status on each ticket without adding status subgroups. Preserve Sprint metadata on individual tickets. Determine This/Upcoming/Past Sprint from actual dates and current time, never guessed S1/S2 boundaries; a past Sprint does not mean Done. Validate the complete snapshot/catalog pair and PR continuity before publishing through the repository writers; if required coverage or validation is incomplete, preserve the previous files and report the gap. Never save raw descriptions, comments or credentials. Reload the same local page and verify rendered results when available; distinguish publication checks from unavailable browser verification.';
+}
+
+export function createDailyUpdateRequest(snapshotGeneratedAt) {
+  const since = new Date(snapshotGeneratedAt);
+  if (!Number.isFinite(since.valueOf())) return createUpdateRequest();
+  const overlap = new Date(since.valueOf() - 24 * 60 * 60 * 1000).toISOString();
+  return `Please run a daily incremental Focus Shelf refresh using this repository's bundled focus-shelf and generate-focus-shelf-icon Skills and CODEX_SNAPSHOT.md. Use the current profile, Linear owner/workspace, GitHub identity, team DRI map and local origin already configured for this shelf. The last successfully published snapshot is ${since.toISOString()}; query Linear issues updated after ${overlap} (24-hour overlap) and exhaust pagination. Also enumerate the owner's current assigned issue IDs and issues created since ${overlap}; retain every previously published created/followed seed, including Done tickets. Merge changed records into the prior complete snapshot rather than rebuilding from a blank set. For each changed/new issue and any previously included issue whose membership or relations may have changed, refresh status, assignee, estimate, Sprint and authoritative start/end dates, createdAt, exact relations, comments/PR references and historical identifier aliases. Separately re-verify current Sprint membership for every retained issue on each daily refresh, including tickets whose prior Sprint was null: Sprint assignment can change without other meaningful ticket changes, so detect newly added, removed, or changed Sprint membership and refresh the ticket's Sprint name and authoritative dates. If complete Sprint-membership coverage for the retained set cannot be obtained, do not claim it is current or publish a partial refresh; preserve prior files and report the gap. Recursively fetch the complete reciprocal child closure for affected seeds and include every new descendant; remove an old issue only when current evidence proves it no longer belongs to the assigned/created/followed scope or any retained child closure. Preserve unaffected issue records and local Memo, Archive and open-PR manual status. Discover and verify new PR associations only for changed/new affected tickets; refresh GitHub state and complete CI for each known open PR and each newly discovered PR at its current head. Keep prior verified associations for unaffected PRs and preserve any PR whose association or ownership remains unresolved; never infer no PR from an incomplete search. Treat Release target policy as an attention warning; skipped/unknown checks are not failures. Preserve ticket icons/workstreams for unchanged meanings and refresh topic icons only when a visible root's meaning changed or a new root appeared. Keep ticket status read-only, omit Canceled/Duplicate cards, and let the application group and format. Publish a new complete snapshot/catalog pair with a new timestamp only after affected-scope, Sprint-membership, child-closure, PR-continuity and validation checks pass; keep prior records and observations for unaffected items. If the previous snapshot is missing, identity changed, the incremental query or relationship closure is incomplete, or unexpected scope drift appears, do not publish a partial delta: perform a full refresh or preserve the previous files and report the gap. Never save raw descriptions, comments or credentials. Reload the same local page and report API/publication checks separately from any unavailable visual browser verification.`;
 }
 
 export function renderShelf({ config, snapshot, catalog, dri, overlays = {}, readOnly = true, readOnlyReason = '', saveState = 'idle', revealIssueId = null, now = new Date().toISOString() }) {
@@ -277,7 +305,7 @@ export function renderShelf({ config, snapshot, catalog, dri, overlays = {}, rea
     const items = visibleRoots.filter(item => group.types.has(familyGroupType(item)));
     if (!items.length) return '';
     const context = { byId, children, catalog, overlays, readOnly, maps, categories, snapshotGeneratedAt: now, revealIssueId, workGroup: group.key, timezone: config?.timezone ?? 'UTC' };
-    const reveal = revealIssueId && items.some(item => familyHasIssue(item, revealIssueId, children, overlays));
+    const reveal = group.key === 'current' || revealIssueId && items.some(item => familyHasIssue(item, revealIssueId, children, overlays));
     return `<details class="focus-group focus-group-${group.key}" data-fold="group:${group.key}"${reveal ? ' open' : ''}><summary><span>${group.symbol}</span>${group.label}</summary><div class="sprint-groups">${renderSprintGroups(items, context)}</div></details>`;
   }).join('');
   const empty = '<section class="empty"><h2>Your shelf is ready</h2><p>No issues yet. Configure your local profile and explicitly ask Codex to refresh a snapshot.</p></section>';
@@ -286,7 +314,7 @@ export function renderShelf({ config, snapshot, catalog, dri, overlays = {}, rea
   const writerNotice = readOnly
     ? '<div class="writer-notice"><span>Read-only</span><button id="takeover">Use this window</button></div>'
     : '<div class="local-status" hidden aria-live="polite"></div>';
-  const updateControl = '<header class="shelf-toolbar"><button id="request-focus-update" class="update-action" type="button" aria-describedby="focus-update-status" title="Copy a complete Focus Shelf refresh request for Codex"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M20 7v5h-5M4 17v-5h5M6.1 8A7 7 0 0 1 18 6l2 1M17.9 16A7 7 0 0 1 6 18l-2-1"/></svg><span>Update</span></button><span id="focus-update-status" class="update-status" aria-live="polite"></span><textarea id="focus-update-fallback" readonly hidden aria-label="Focus Shelf update request"></textarea></header>';
+  const updateControl = '<header class="shelf-toolbar"><button id="request-focus-update" class="update-action" type="button" aria-describedby="focus-update-status" title="Copy a daily incremental Focus Shelf refresh request for Codex"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M20 7v5h-5M4 17v-5h5M6.1 8A7 7 0 0 1 18 6l2 1M17.9 16A7 7 0 0 1 6 18l-2-1"/></svg><span>Update</span></button><button id="request-focus-full-update" class="update-full-action" type="button" aria-describedby="focus-update-status" title="Copy a complete Focus Shelf reconciliation request for Codex">Full refresh</button><span id="focus-update-status" class="update-status" aria-live="polite"></span><textarea id="focus-update-fallback" readonly hidden aria-label="Focus Shelf update request"></textarea></header>';
   const slackReport = '<section class="slack-report"><button id="generate-slack-report">Generate Slack Report</button><div id="slack-report-panel" hidden><div id="slack-report-preview" class="slack-report-preview"></div><textarea id="slack-report-text" readonly hidden></textarea><div class="slack-report-actions"><button id="copy-slack-report">Copy Report</button><span id="slack-report-status" aria-live="polite"></span></div></div></section>';
   return `${updateControl}${navigation}${writerNotice}${renderedGroups || empty}${archive}${slackReport}`;
 }
@@ -368,13 +396,12 @@ if (typeof document !== 'undefined') {
     const folds = new Map([...main.querySelectorAll('details[data-fold]')].map(node => [node.dataset.fold, node.open]));
     main.innerHTML = renderShelf({ ...shelf, overlays: client.getOverlays(), readOnly: client.readOnly, readOnlyReason: client.readOnlyReason, saveState: client.saveState, revealIssueId });
     main.querySelectorAll('details[data-fold]').forEach(node => {
-      if (!node.open && folds.has(node.dataset.fold)) node.open = folds.get(node.dataset.fold);
+      if ((!revealIssueId || !node.open) && folds.has(node.dataset.fold)) node.open = folds.get(node.dataset.fold);
     });
     const errors = () => { const node = main.querySelector('.local-status') ?? main.querySelector('.writer-notice'); node.hidden = false; node.textContent = `Save failed · ${client.readOnlyReason || 'Local storage or input unavailable'}`; node.classList.add('error'); };
     const action = (fn, reveal = null) => { try { fn(); render(reveal); if (reveal) main.querySelector(`[data-archive="${CSS.escape(reveal)}"]`)?.scrollIntoView({ block: 'center' }); } catch { errors(); } };
     main.querySelector('#takeover')?.addEventListener('click', async () => { await client.acquireWriter(); render(); });
-    main.querySelector('#request-focus-update').onclick = async () => {
-      const request = createUpdateRequest();
+    const copyUpdatePrompt = async request => {
       const status = main.querySelector('#focus-update-status');
       const fallback = main.querySelector('#focus-update-fallback');
       try {
@@ -388,6 +415,10 @@ if (typeof document !== 'undefined') {
         status.textContent = 'Copy this request to Codex';
       }
     };
+    main.querySelector('#request-focus-update').onclick = () => copyUpdatePrompt(
+      shelf.snapshot ? createDailyUpdateRequest(shelf.snapshot.generatedAt) : createUpdateRequest(),
+    );
+    main.querySelector('#request-focus-full-update').onclick = () => copyUpdatePrompt(createUpdateRequest());
     main.querySelectorAll('[data-memo]').forEach(node => { node.onchange = () => action(() => client.setMemo(node.dataset.memo, node.value)); });
     main.querySelectorAll('[data-archive]').forEach(node => { node.onclick = () => {
       const id = node.dataset.archive;

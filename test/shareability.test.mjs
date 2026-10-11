@@ -3,10 +3,84 @@ import assert from 'node:assert/strict';
 import { readFile, readdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
-import { renderShelf, createReport, createReportHtml, createUpdateRequest, formatAssigneeName, formatDriName, renderTicketIcon, displayedPRState } from '../web/app.mjs';
+import { renderShelf, createReport, createReportHtml, createUpdateRequest, createDailyUpdateRequest, formatAssigneeName, formatDriName, renderTicketIcon, displayedPRState } from '../web/app.mjs';
 import { config, snapshot, catalog, dri, snapshotV2, catalogV2 } from './helpers.mjs';
 
 const root = new URL('..', import.meta.url).pathname;
+
+test('Update prompt preserves Sprint evidence without redefining template grouping or completion', () => {
+  const request = createUpdateRequest();
+  for (const phrase of ['group by Sprint only inside Current work and Completed', 'Upcoming and Backlog group directly into Assigned to me, Assigned to others, and Unassigned', 'newest Sprint first', 'verified creation month', 'a past Sprint does not mean Done']) assert.ok(request.includes(phrase));
+});
+
+test('Daily Update prompt rechecks Sprint membership for every retained issue, including No Sprint', () => {
+  const request = createDailyUpdateRequest('2026-10-10T00:00:00.000Z');
+  assert.match(request, /re-verify current Sprint membership for every retained issue on each daily refresh/);
+  assert.match(request, /including tickets whose prior Sprint was null/);
+  assert.match(request, /complete Sprint-membership coverage.*do not claim it is current or publish a partial refresh/s);
+});
+
+test('Upcoming groups directly by ownership while retaining To Do/Triage status and child trees', () => {
+  const base = { ...snapshot.issues[0], relations: [], status: { name: 'To Do', type: 'unstarted' } };
+  const issues = [base, { ...base, id: 'DEMO-2', assignee: null }, { ...base, id: 'DEMO-3', status: { name: 'Triage', type: 'triage' }, assignee: { id: 'other', name: 'Alex' } }];
+  const state = { config, snapshot: { ...snapshot, issues, createdIssueIds: ['DEMO-2', 'DEMO-3'] }, catalog: null };
+  const html = renderShelf(state);
+  for (const key of ['ownership:planned:none:mine', 'ownership:planned:none:unassigned', 'ownership:planned:none:delegated']) assert.ok(html.includes(`data-fold="${key}">`));
+  assert.match(html, /status-pill status-unstarted/);
+  assert.match(html, /status-pill status-triage/);
+  assert.doesNotMatch(html, /data-fold="upcoming:/);
+  assert.doesNotMatch(html, /data-fold="sprint:planned:/);
+  const restored = renderShelf({ ...state, revealIssueId: 'DEMO-3' });
+  assert.match(restored, /data-fold="ownership:planned:none:delegated" open/);
+});
+
+test('Backlog ownership groups start collapsed without an extra Sprint layer', () => {
+  const base = { ...snapshot.issues[0], relations: [], status: { name: 'Backlog', type: 'backlog' } };
+  const issues = [base, { ...base, id: 'DEMO-2', assignee: { id: 'other', name: 'Alex' } }, { ...base, id: 'DEMO-3', assignee: null }, { ...base, id: 'DEMO-4', status: { name: 'In Progress', type: 'started' } }];
+  const state = { config, snapshot: { ...snapshot, issues, createdIssueIds: ['DEMO-2', 'DEMO-3'] }, catalog: null };
+  const html = renderShelf(state);
+  for (const key of ['mine', 'delegated', 'unassigned']) assert.match(html, new RegExp(`data-fold="ownership:backlog:none:${key}">`));
+  assert.match(html, /data-fold="ownership:current:none:mine" open/);
+  assert.doesNotMatch(html, /data-fold="group:backlog" open/);
+  assert.match(renderShelf({ ...state, revealIssueId: 'DEMO-2' }), /data-fold="ownership:backlog:none:delegated" open/);
+  const sprint = { name: 'Example Sprint', startDate: '2026-10-01T00:00:00.000Z', endDate: '2026-10-20T00:00:00.000Z' };
+  const dated = renderShelf({ ...state, snapshot: { ...state.snapshot, issues: [{ ...base, sprint }] }, now: '2026-10-10T00:00:00.000Z' });
+  assert.doesNotMatch(dated, /data-fold="sprint:backlog:/);
+  assert.match(dated, /ownership:backlog:none:mine/);
+});
+
+test('Child disclosure counts displayed immediate children, not all descendants', () => {
+  const value = structuredClone(snapshotV2);
+  const extra = { ...value.issues[2], id: 'DEMO-5', relations: [{ type: 'parent', issueId: 'DEMO-1' }] };
+  value.issues[0].relations.push({ type: 'child', issueId: extra.id });
+  value.issues.push(extra);
+  const state = { config, snapshot: value, catalog: null };
+  assert.match(renderShelf(state), /data-fold="children:DEMO-1"[^]*?<span>· 2 tasks<\/span>/);
+  assert.match(renderShelf(state), /data-fold="children:DEMO-2"[^]*?<span>· 1 task<\/span>/);
+  assert.match(renderShelf({ ...state, overlays: { archived: { 'DEMO-5': true } } }), /data-fold="children:DEMO-1"[^]*?<span>· 1 task<\/span>/);
+  for (const phrase of ['bundled focus-shelf', 'exhaust pagination', 'PR responsibility separately', 'private DRI map', 'PR continuity', 'preserve the previous files']) assert.ok(createUpdateRequest().includes(phrase));
+});
+
+test('Triage uses slate-blue while To Do keeps a distinct gold badge', async () => {
+  const css = await readFile(join(root, 'web/styles.css'), 'utf8');
+  assert.match(css, /\.status-pill\.status-triage \{ color: #536477; background: #eaf0f6; \}/);
+  assert.match(css, /\.status-pill\.status-unstarted \{ color: #845400; background: #fff0bd; \}/);
+});
+
+test('Current work groups by Sprint then verified ownership without splitting families', () => {
+  const issue = { ...snapshot.issues[0], relations: [], status: { name: 'In Progress', type: 'started' }, sprint: { name: '26.10.S1', startDate: '2026-10-01T00:00:00.000Z', endDate: '2026-10-15T00:00:00.000Z' } };
+  const issues = [issue, { ...issue, id: 'DEMO-2', assignee: { id: 'other', name: 'Alex' } }, { ...issue, id: 'DEMO-3', assignee: null }, { ...issue, id: 'DEMO-4', assignee: { id: 'other', name: 'Sam' } }, { ...issue, id: 'DEMO-5', sprint: null }];
+  const state = { config, snapshot: { ...snapshot, issues, createdIssueIds: ['DEMO-2', 'DEMO-3'], followedIssueIds: ['DEMO-4'] }, catalog: null, now: '2026-10-10T00:00:00.000Z' };
+  const html = renderShelf(state);
+  assert.match(html, /This Sprint · 26\.10\.S1/);
+  assert.match(html, />No Sprint<\/summary>/);
+  for (const label of ['Assigned to me', 'Created → Assigned to others', 'Unassigned', 'Following']) assert.ok(html.includes(`<summary>${label}</summary>`));
+  assert.match(html, /data-fold="ownership:[^"]+" open/);
+  assert.match(html, /data-fold="group:current" open/);
+  assert.doesNotMatch(html, /data-fold="sprint:current:[^"]+">/);
+  assert.match(renderShelf({ ...state, revealIssueId: 'DEMO-2' }), /data-fold="ownership:[^"]+:delegated" open/);
+  assert.equal([...html.matchAll(/data-archive="DEMO-2"/g)].length, 1);
+});
 
 test('Completed folds every subgroup and orders Sprint then creation month newest first', () => {
   const done = { ...snapshot.issues[0], relations: [], status: { name: 'Done', type: 'completed' }, sprint: null };
@@ -58,15 +132,15 @@ test('Sprint phase follows current time and actual dates, not stale snapshot or 
   assert.match(renderShelf({ ...state, snapshot: { ...state.snapshot, issues: [{ ...issue, sprint: { ...issue.sprint, startDate: null, endDate: null } }] }, now: '2026-10-25T00:00:00.000Z' }), />Sprint · 26\.10\.S2/);
 });
 
-test('Backlog and Past Sprint fold independently and reveal restores both levels', () => {
+test('Backlog and ownership fold independently and reveal restores both levels', () => {
   const issue = { ...snapshot.issues[0], status: { name: 'Backlog', type: 'backlog' }, sprint: { name: 'Old sprint', startDate: '2026-09-01T00:00:00.000Z', endDate: '2026-09-10T00:00:00.000Z' } };
   const state = { config, snapshot: { ...snapshot, generatedAt: '2026-10-10T00:00:00.000Z', issues: [issue] }, catalog: null };
   const html = renderShelf(state);
   assert.match(html, /data-fold="group:backlog"><summary>/);
-  assert.match(html, /<details class="sprint-group sprint-group-past" data-fold="sprint:backlog:[^"]+"><summary>Past Sprint · Old sprint<\/summary>/);
+  assert.match(html, /data-fold="ownership:backlog:none:mine"><summary>/);
   const revealed = renderShelf({ ...state, revealIssueId: issue.id });
   assert.match(revealed, /data-fold="group:backlog" open/);
-  assert.match(revealed, /data-fold="sprint:backlog:[^"]+" open/);
+  assert.match(revealed, /data-fold="ownership:backlog:none:mine" open/);
 });
 
 test('Estimate circles explicitly identify points in their hover tooltip', () => {
@@ -152,7 +226,7 @@ test('C11 shared UI uses the canonical Focus Shelf hierarchy and compact visual 
   assert.match(html, /focus-group/);
   assert.match(html, /relationship-symbol relationship-symbol-child">Child/);
   assert.match(html, /<details class="child-task-fold" data-fold="children:DEMO-10"><summary class="handled-by">/);
-  assert.match(html, /<span>tasks<\/span>/);
+  assert.match(html, /<span>· 1 task<\/span>/);
   const revealed = renderShelf({ ...state, revealIssueId: 'DEMO-11' });
   assert.match(revealed, /data-fold="children:DEMO-10" open/);
   assert.match(html, /ticket-thumbnail/);
@@ -171,11 +245,11 @@ test('C11 top Update control prepares an explicit Codex refresh request without 
   assert.match(html, /id="focus-update-fallback"[^>]*readonly hidden/);
   const request = createUpdateRequest();
   assert.match(request, /Please update my Focus Shelf/);
-  assert.match(request, /issues I created and later reassigned/);
+  assert.match(request, /all issues I created \(including reassigned and unassigned issues\)/);
   assert.match(request, /exact associated PRs/);
   assert.match(request, /Preserve browser-local Memo, Archive/);
   assert.match(request, /Release target policy failure as an attention warning/);
-  assert.match(request, /reload the live Focus Shelf page and verify the rendered results/);
+  assert.match(request, /Reload the same local page and verify rendered results when available/);
   assert.doesNotMatch(html, /Update complete|Synchronized|Synced/);
 });
 
@@ -376,7 +450,7 @@ test('C11 Current work groups complete ticket families by observed Linear Sprint
   const html = renderShelf({ config, snapshot: { ...snapshot, generatedAt: '2026-10-09T00:00:00.000Z', issues: [first, second, unscheduled] }, catalog, now: '2026-10-09T00:00:00.000Z' });
   assert.equal((html.match(/This Sprint · Sprint 26\.10\.S1/g) ?? []).length, 1);
   const start = html.indexOf('This Sprint · Sprint 26.10.S1');
-  const currentSprint = html.slice(start, html.indexOf('</section>', start));
+  const currentSprint = html.slice(start, html.indexOf('data-fold="sprint:current:none"', start));
   assert.match(currentSprint, /First sprint item/);
   assert.match(currentSprint, /Second sprint item/);
   assert.doesNotMatch(currentSprint, /Unscheduled item/);
@@ -505,7 +579,7 @@ test('C11 EQA remains Current work but has its own pink Linear-status treatment'
   const value = structuredClone(snapshot);
   value.issues[0].status = { name: 'EQA', type: 'started' };
   const html = renderShelf({ config, snapshot: value, catalog });
-  assert.match(html, /<details class="focus-group focus-group-current" data-fold="group:current"><summary><span>⚡<\/span>Current work<\/summary>/);
+  assert.match(html, /<details class="focus-group focus-group-current" data-fold="group:current" open><summary><span>⚡<\/span>Current work<\/summary>/);
   assert.match(html, /status-mark status-eqa[^>]*title="Observed Linear status: EQA"/);
   assert.match(html, /status-pill status-eqa[^>]*>EQA<\/span>/);
   const css = await readFile(join(root, 'web/styles.css'), 'utf8');
@@ -596,15 +670,15 @@ test('C02/C12 read-only --list emits the exact publication file list without exc
   assert.equal(result.status, 0);
   const files = JSON.parse(result.stdout);
   assert.ok(Array.isArray(files));
-  assert.equal(files.length, 33);
+  assert.equal(files.length, 34);
   assert.deepEqual(files, [...files].sort());
   assert.equal(new Set(files).size, files.length);
   for (const file of files) {
     assert.doesNotMatch(file, /^(?:work|\.git|node_modules)\//);
-    assert.ok(!['config.json', 'linear-latest.json', 'catalog.json'].includes(file));
+    assert.ok(!['config.json', 'linear-latest.json', 'catalog.json', 'dri.json'].includes(file));
     await readFile(join(root, file));
   }
-  for (const required of ['README.md', 'CODEX_SNAPSHOT.md', 'web/icons/relation-child.svg', 'lib/dri.mjs', 'lib/shareability.mjs', 'scripts/write-codex-catalog.mjs', 'scripts/validate-shareable.mjs', 'skills/focus-shelf/SKILL.md', 'skills/generate-focus-shelf-icon/SKILL.md', 'examples/dri.example.json', 'test/snapshot-v2.test.mjs']) assert.ok(files.includes(required));
+  for (const required of ['README.md', 'CODEX_SNAPSHOT.md', 'config/team-dri.json', 'web/icons/relation-child.svg', 'lib/dri.mjs', 'lib/shareability.mjs', 'scripts/write-codex-catalog.mjs', 'scripts/validate-shareable.mjs', 'skills/focus-shelf/SKILL.md', 'skills/generate-focus-shelf-icon/SKILL.md', 'examples/dri.example.json', 'test/snapshot-v2.test.mjs']) assert.ok(files.includes(required));
 });
 
 test('C02 shareable publication tree contains no private identifiers or data payloads', async () => {

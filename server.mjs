@@ -29,14 +29,26 @@ async function readJSONBody(request, limit = 4096) {
   return JSON.parse(Buffer.concat(chunks).toString('utf8'));
 }
 
-async function loadShelfState(home) {
+async function loadShelfState(home, teamHome) {
   const state = { schemaVersion: 1, config: null, snapshot: null, catalog: null, dri: null, availability: { config: 'missing', snapshot: 'missing', catalog: 'missing', dri: 'missing' } };
-  async function load(name, field, validate) {
-    try { state[field] = validate(await readJSON(home, name)); state.availability[field] = 'ready'; }
+  async function load(name, field, validate, directory = home) {
+    try { state[field] = validate(await readJSON(directory, name)); state.availability[field] = 'ready'; }
     catch (error) { state.availability[field] = error.code === 'ENOENT' ? 'missing' : 'invalid'; }
   }
   await load('config.json', 'config', validateConfig);
-  if (state.config) await load('dri.json', 'dri', validateDri);
+  if (state.config && teamHome) await load('dri.json', 'dri', validateDri, teamHome);
+  else if (state.config) {
+    try {
+      const path = join(root, 'config', 'team-dri.json');
+      const stat = await lstat(path);
+      if (!stat.isFile() || stat.isSymbolicLink() || stat.size > 1024 * 1024) throw new Error('INVALID_DRI_FILE');
+      state.dri = validateDri(JSON.parse(await readFile(path, 'utf8')));
+      state.availability.dri = 'ready';
+    } catch (error) {
+      if (error.code === 'ENOENT') await load('dri.json', 'dri', validateDri);
+      else state.availability.dri = 'invalid';
+    }
+  }
   if (state.config) await load('linear-latest.json', 'snapshot', value => validateSnapshot(value, state.config));
   if (state.snapshot) await load('catalog.json', 'catalog', value => validateCatalog(value, state.config, state.snapshot));
   return state;
@@ -50,8 +62,9 @@ function approvedExternalLinks(state) {
   ]);
 }
 
-export async function startServer({ home = process.env.FOCUS_SHELF_HOME, port = 8770, openExternal = openInChrome } = {}) {
+export async function startServer({ home = process.env.FOCUS_SHELF_HOME, teamHome = process.env.FOCUS_SHELF_TEAM_HOME, port = 8770, openExternal = openInChrome } = {}) {
   home = resolveDataHome({ home });
+  if (teamHome !== undefined) teamHome = await safeHome(teamHome);
   let actualPort;
   const server = createServer(async (request, response) => {
     const send = (status, body, type = 'text/plain; charset=utf-8') => { response.writeHead(status, { 'Content-Type': type, 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff', 'Content-Security-Policy': "default-src 'self'; connect-src 'self'; style-src 'self'; script-src 'self'; img-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'" }); response.end(body); };
@@ -67,14 +80,14 @@ export async function startServer({ home = process.env.FOCUS_SHELF_HOME, port = 
       let body;
       try { body = await readJSONBody(request); } catch { return send(400, 'Invalid request'); }
       if (!body || Object.keys(body).length !== 1 || typeof body.url !== 'string') return send(400, 'Invalid request');
-      const state = await loadShelfState(home);
+      const state = await loadShelfState(home, teamHome);
       if (!approvedExternalLinks(state).has(body.url)) return send(403, 'Unapproved link');
       try { await openExternal(body.url); } catch { return send(502, 'Chrome could not open the link'); }
       return send(204, '');
     }
     if (request.method !== 'GET') { response.setHeader('Allow', 'GET'); return send(405, 'GET only'); }
     if (path === '/api/shelf') {
-      return send(200, JSON.stringify(await loadShelfState(home)), 'application/json; charset=utf-8');
+      return send(200, JSON.stringify(await loadShelfState(home, teamHome)), 'application/json; charset=utf-8');
     }
     const file = path === '/' ? 'web/index.html' : path.slice(1);
     if (!staticFiles.has(file)) return send(404, 'Not found');

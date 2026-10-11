@@ -34,6 +34,9 @@ a { color: var(--link); text-underline-offset: 2px; }
 .update-action:hover { background: #2b417d; }
 .update-action:active { background: #23366a; }
 .update-action:focus-visible { outline: 3px solid #aec4ff; outline-offset: 2px; }
+.update-full-action { min-height: 38px; padding: 7px 11px; border-color: var(--line); color: var(--muted); background: var(--surface); font-size: .78rem; }
+.update-full-action:hover { color: var(--ink); border-color: var(--muted); }
+.update-full-action:focus-visible { outline: 3px solid #aec4ff; outline-offset: 2px; }
 .update-action svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 .update-status { min-width: 0; color: var(--muted); font-size: .69rem; line-height: 1.35; }
 #focus-update-fallback { flex: 1 1 100%; min-height: 74px; padding: 8px; border: 1px solid var(--line); border-radius: 7px; background: var(--surface); font-size: .7rem; line-height: 1.4; resize: vertical; }
@@ -51,6 +54,8 @@ nav { display: flex; flex-wrap: wrap; gap: 8px; min-width: 0; }
 .focus-group > summary:hover { background: var(--line); }
 .focus-group > summary:focus-visible, .child-task-fold > summary:focus-visible { outline: 2px solid var(--blue); outline-offset: 3px; }
 .sprint-groups { display: grid; gap: 9px; }
+.focus-group > .sprint-groups { margin-left: 12px; padding-left: 10px; border-left: 1px solid var(--line); }
+.sprint-group > .group-items { margin-left: 12px; }
 .sprint-group { display: grid; gap: 6px; }
 .sprint-group > h3 { margin: 0; padding: 5px 9px; border-left: 3px solid #8da7cf; border-radius: 0 6px 6px 0; color: #334155; background: #f3f6fa; font-size: .72rem; line-height: 1.35; }
 .sprint-group-current > h3 { border-left-color: var(--blue); color: var(--blue); background: var(--blue-bg); }
@@ -62,6 +67,14 @@ nav { display: flex; flex-wrap: wrap; gap: 8px; min-width: 0; }
 .sprint-group-past > summary:focus-visible { outline: 2px solid var(--blue); outline-offset: 3px; }
 .sprint-group-mixed > h3 { border-left-color: var(--amber); color: #725a00; background: #fffae9; }
 .group-items { display: grid; gap: 8px; }
+.ownership-group { min-width: 0; padding-left: 9px; border-left: 1px solid var(--line); }
+.ownership-group > summary { padding: 7px 9px; border-radius: 6px; background: var(--group); color: #515564; font-size: .72rem; font-weight: 650; cursor: pointer; }
+.ownership-group[open] > summary { margin-bottom: 8px; }
+.ownership-group > summary:hover { background: var(--line); }
+.ownership-group > summary:focus-visible { outline: 2px solid var(--blue); outline-offset: 3px; }
+.ownership-group-mine > summary { color: var(--blue); background: var(--blue-bg); }
+.ownership-group-delegated > summary { color: #7a5400; background: #fff2bf; }
+.ownership-group-unassigned > summary { color: #a12b24; background: #fff1f0; }
 .ticket-card { min-width: 0; padding: 11px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); box-shadow: 0 0 0 1px #00000005; }
 .ticket-family { padding: 12px; }
 .ticket-ownership { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 4px; color: var(--muted); font-size: .7rem; }
@@ -102,7 +115,7 @@ nav { display: flex; flex-wrap: wrap; gap: 8px; min-width: 0; }
 .status-eqa { color: var(--pink); background: linear-gradient(90deg, currentColor 50%, transparent 50%); }
 .status-completed { color: var(--green); background: currentColor; }
 .status-canceled { color: var(--red); }
-.status-triage { color: var(--amber); }
+.status-triage { color: #536477; }
 .status-unstarted { color: #a86a00; }
 .status-backlog, .status-unknown { color: #9898a2; }
 .memo-row { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; margin-top: 8px; min-width: 0; }
@@ -112,7 +125,7 @@ nav { display: flex; flex-wrap: wrap; gap: 8px; min-width: 0; }
 .status-pill.status-eqa { color: var(--pink); background: var(--pink-bg); }
 .status-pill.status-completed { color: var(--green); background: var(--green-bg); }
 .status-pill.status-canceled { color: var(--red); background: #fff0ec; }
-.status-pill.status-triage { color: var(--amber); background: var(--amber-bg); }
+.status-pill.status-triage { color: #536477; background: #eaf0f6; }
 .status-pill.status-unstarted { color: #845400; background: #fff0bd; }
 .status-pill.status-backlog, .status-pill.status-unknown { color: var(--muted); background: var(--group); }
 .memo-row textarea { flex: 1 1 180px; min-width: 0; min-height: 29px; max-height: 88px; padding: 4px 7px; border: 0; border-bottom: 1px solid var(--line); border-radius: 0; resize: vertical; color: #27282d; background: transparent; font-size: .73rem; line-height: 1.4; }
