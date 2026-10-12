@@ -1,4 +1,5 @@
 node_modules/
+.focus-shelf/
 work/
 .DS_Store
 *.tmp

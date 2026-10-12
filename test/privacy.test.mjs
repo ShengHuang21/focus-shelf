@@ -18,6 +18,15 @@ test('C02 publication validator accepts a safe allowlisted tree', async t => {
   assert.equal((await validateShareableTree(await publication(t))).valid, true);
 });
 
+test('ignored checkout data never enters the shareable file list', async t => {
+  const root = await publication(t);
+  await mkdir(join(root, '.focus-shelf'));
+  await writeFile(join(root, '.focus-shelf', 'config.json'), '{"profileId":"SYNTHETIC_PRIVATE_MARKER"}');
+  const result = await validateShareableTree(root);
+  assert.ok(result.excluded.includes('.focus-shelf'));
+  assert.ok(result.files.every(file => !file.startsWith('.focus-shelf/')));
+});
+
 test('C02 publication validator rejects external user data and unapproved files', async t => {
   for (const name of ['config.json', 'linear-latest.json', 'catalog.json', 'dri.json', '.env', 'unexpected.txt']) {
     const root = await publication(t);
