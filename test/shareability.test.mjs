@@ -57,7 +57,7 @@ test('Child disclosure counts displayed immediate children, not all descendants'
   const state = { config, snapshot: value, catalog: null };
   assert.match(renderShelf(state), /data-fold="children:DEMO-1"[^]*?<span>· 2 tasks<\/span>/);
   assert.match(renderShelf(state), /data-fold="children:DEMO-2"[^]*?<span>· 1 task<\/span>/);
-  assert.match(renderShelf({ ...state, overlays: { archived: { 'DEMO-5': true } } }), /data-fold="children:DEMO-1"[^]*?<span>· 1 task<\/span>/);
+  assert.match(renderShelf({ ...state, overlays: { archived: { 'DEMO-5': true } } }), /data-fold="children:DEMO-1"[^]*?<span>· 1 task · 1 archived<\/span>/);
   for (const phrase of ['bundled focus-shelf', 'exhaust pagination', 'PR responsibility separately', 'private DRI map', 'PR continuity', 'preserve the previous files']) assert.ok(createUpdateRequest().includes(phrase));
 });
 
@@ -253,18 +253,28 @@ test('C11 top Update control prepares an explicit Codex refresh request without 
   assert.doesNotMatch(html, /Update complete|Synchronized|Synced/);
 });
 
-test('C11 archived tickets move into the collapsed Archive section without hiding active children', () => {
-  const parent = { ...snapshot.issues[0], id: 'DEMO-10', uuid: '00000000-0000-4000-8000-000000000010', title: 'Synthetic parent', url: 'https://linear.example.test/demo-workspace/issue/DEMO-10', relations: [{ type: 'child', issueId: 'DEMO-11' }] };
-  const child = { ...snapshot.issues[0], id: 'DEMO-11', uuid: '00000000-0000-4000-8000-000000000011', title: 'Synthetic child', url: 'https://linear.example.test/demo-workspace/issue/DEMO-11', relations: [{ type: 'parent', issueId: 'DEMO-10' }] };
-  const state = { config, snapshot: { ...snapshot, followedIssueIds: ['DEMO-10', 'DEMO-11'], issues: [parent, child] }, catalog, overlays: { archived: { 'DEMO-10': true } } };
+test('C11 archiving a parent keeps its child tree together in Archive', () => {
+  const parent = { ...snapshot.issues[0], id: 'DEMO-10', uuid: '00000000-0000-4000-8000-000000000010', title: 'Synthetic parent', status: { name: 'Done', type: 'completed' }, url: 'https://linear.example.test/demo-workspace/issue/DEMO-10', relations: [{ type: 'child', issueId: 'DEMO-11' }] };
+  const child = { ...snapshot.issues[0], id: 'DEMO-11', uuid: '00000000-0000-4000-8000-000000000011', title: 'Synthetic child', status: { name: 'In Progress', type: 'started' }, url: 'https://linear.example.test/demo-workspace/issue/DEMO-11', relations: [{ type: 'parent', issueId: 'DEMO-10' }] };
+  const state = { config, snapshot: { ...snapshot, followedIssueIds: ['DEMO-10', 'DEMO-11'], issues: [parent, child] }, catalog, overlays: { archived: { 'DEMO-10': true, 'DEMO-11': true } } };
   const html = renderShelf(state);
   const current = html.slice(0, html.indexOf('<details id="archive-section"'));
   const archive = html.slice(html.indexOf('<details id="archive-section"'));
   assert.doesNotMatch(current, /Synthetic parent/);
-  assert.match(current, /Synthetic child/);
-  assert.match(archive, /Archive · 1/);
+  assert.doesNotMatch(current, /Synthetic child/);
+  assert.match(archive, /Archive · 2/);
   assert.match(archive, /Synthetic parent/);
+  assert.match(archive, /data-fold="children:DEMO-10" open/);
+  assert.match(archive, /Synthetic child/);
+  assert.match(archive, /class="ticket-outstanding"[^>]*>1 In Progress<\/div>/);
+  assert.equal((archive.match(/Synthetic child/g) ?? []).length, 1);
   assert.match(archive, />Restore</);
+  const parentOnly = renderShelf({ ...state, overlays: { archived: { 'DEMO-10': true } } });
+  assert.match(parentOnly, /Archive · 2/);
+  assert.doesNotMatch(parentOnly.slice(0, parentOnly.indexOf('<details id="archive-section"')), /Synthetic child/);
+  const restoredParent = renderShelf({ ...state, overlays: { archived: { 'DEMO-10': false, 'DEMO-11': true } } });
+  assert.match(restoredParent, /Archive · 1/);
+  assert.match(restoredParent, /data-fold="children:DEMO-10"[^]*?<span>· 0 tasks · 1 archived<\/span>/);
 });
 
 test('C11 restoring a completed ticket opens its destination group instead of making it appear lost', () => {
