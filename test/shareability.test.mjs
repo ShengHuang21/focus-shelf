@@ -58,7 +58,7 @@ test('Child disclosure counts displayed immediate children, not all descendants'
   assert.match(renderShelf(state), /data-fold="children:DEMO-1"[^]*?<span>· 2 tasks<\/span>/);
   assert.match(renderShelf(state), /data-fold="children:DEMO-2"[^]*?<span>· 1 task<\/span>/);
   assert.match(renderShelf({ ...state, overlays: { archived: { 'DEMO-5': true } } }), /data-fold="children:DEMO-1"[^]*?<span>· 1 task · 1 archived<\/span>/);
-  for (const phrase of ['bundled focus-shelf', 'exhaust pagination', 'PR responsibility separately', 'private DRI map', 'PR continuity', 'preserve the previous files']) assert.ok(createUpdateRequest().includes(phrase));
+  for (const phrase of ['bundled focus-shelf', 'exhaust pagination', 'PR responsibility separately', 'private DRI map', 'PR continuity', 'leave the existing local files unchanged']) assert.ok(createUpdateRequest().includes(phrase));
 });
 
 test('Triage uses slate-blue while To Do keeps a distinct gold badge', async () => {
@@ -74,7 +74,8 @@ test('Current work groups by Sprint then verified ownership without splitting fa
   const html = renderShelf(state);
   assert.match(html, /This Sprint · 26\.10\.S1/);
   assert.match(html, />No Sprint<\/summary>/);
-  for (const label of ['Assigned to me', 'Created → Assigned to others', 'Unassigned', 'Following']) assert.ok(html.includes(`<summary>${label}</summary>`));
+  for (const label of ['Assigned to me', 'Assigned to others', 'Unassigned']) assert.ok(html.includes(`<summary>${label}</summary>`));
+  assert.doesNotMatch(html, /<summary>Following<\/summary>/);
   assert.match(html, /data-fold="ownership:[^"]+" open/);
   assert.match(html, /data-fold="group:current" open/);
   assert.doesNotMatch(html, /data-fold="sprint:current:[^"]+">/);
@@ -247,7 +248,7 @@ test('C11 top Update control prepares an explicit Codex refresh request without 
   assert.match(request, /Please update my Focus Shelf/);
   assert.match(request, /all issues I created \(including reassigned and unassigned issues\)/);
   assert.match(request, /exact associated PRs/);
-  assert.match(request, /Preserve local-file Memo, local-file Archive/);
+  assert.match(request, /Preserve local-file Memo and local-file Archive/);
   assert.match(request, /Release target policy failure as an attention warning/);
   assert.match(request, /Reload the same local page and verify rendered results when available/);
   assert.doesNotMatch(html, /Update complete|Synchronized|Synced/);
@@ -274,7 +275,7 @@ test('C11 archiving a parent keeps its child tree together in Archive', () => {
   assert.doesNotMatch(parentOnly.slice(0, parentOnly.indexOf('<details id="archive-section"')), /Synthetic child/);
   const restoredParent = renderShelf({ ...state, overlays: { archived: { 'DEMO-10': false, 'DEMO-11': true } } });
   assert.match(restoredParent, /Archive · 1/);
-  assert.match(restoredParent, /data-fold="children:DEMO-10"[^]*?<span>· 0 tasks · 1 archived<\/span>/);
+  assert.match(restoredParent, /class="handled-by"[^]*?<span>· 0 tasks · 1 archived<\/span>/);
 });
 
 test('Archived parent returns to Completed only when every child and associated PR is complete', () => {
@@ -299,18 +300,18 @@ test('C11 restoring a completed ticket opens its destination group instead of ma
   assert.match(restored, /data-archive="DEMO-1"[^>]*>Archive<\/button>/);
 });
 
-test('C11 a completed Linear ticket stays Completed while an associated PR remains open', () => {
+test('C11 a completed Linear ticket stays Current work while an associated PR remains open', () => {
   const done = { ...snapshot.issues[0], status: { name: 'Done', type: 'completed' } };
   const activeCatalog = {
     ...catalog,
     pullRequests: [{ ...catalogV2.pullRequests[0], issueId: done.id, state: 'open' }],
   };
   const html = renderShelf({ config, snapshot: { ...snapshot, issues: [done] }, catalog: activeCatalog });
-  assert.match(html, /data-fold="group:completed">[^]*DEMO-1/);
-  assert.match(renderShelf({ config, snapshot: { ...snapshot, issues: [done] }, catalog: activeCatalog, revealIssueId: done.id }), /data-fold="group:completed" open/);
+  assert.match(html, /data-fold="group:current"[^]*DEMO-1/);
+  assert.match(renderShelf({ config, snapshot: { ...snapshot, issues: [done] }, catalog: activeCatalog, revealIssueId: done.id }), /data-fold="group:current" open/);
   assert.match(html, /PR #/);
   assert.match(html, /status-pill status-completed[^>]*>Done</);
-  assert.doesNotMatch(html, /focus-group-current/);
+  assert.doesNotMatch(html, /focus-group-completed/);
 });
 
 test('C11 a completed Linear ticket moves into Completed after all associated PRs become terminal', () => {
@@ -324,15 +325,16 @@ test('C11 a completed Linear ticket moves into Completed after all associated PR
   assert.doesNotMatch(html, /focus-group-current/);
 });
 
-test('C11 other-owner ticket PRs are not shown as profile-owned work', () => {
+test('C11 other-owner ticket PRs remain visible with creator attribution', () => {
   const contextIssue = { ...snapshot.issues[0], id: 'DEMO-2', uuid: '00000000-0000-4000-8000-000000000002', title: 'Other owner context', url: 'https://linear.example.test/demo-workspace/issue/DEMO-2', assignee: { id: 'other-owner', name: 'Other Owner' } };
   const state = {
     config,
     snapshot: { ...snapshot, followedIssueIds: ['DEMO-1', 'DEMO-2'], issues: [snapshot.issues[0], contextIssue] },
-    catalog: { ...catalog, pullRequests: [{ issueId: 'DEMO-2', repository: 'demo/other', number: 7, url: 'https://github.com/demo/other/pull/7', baseBranch: 'main', state: 'open', purpose: 'Context-only change', observedAt: snapshot.generatedAt }] },
+    catalog: { ...catalog, pullRequests: [{ issueId: 'DEMO-2', repository: 'demo/other', number: 7, url: 'https://github.com/demo/other/pull/7', baseBranch: 'main', state: 'open', purpose: 'Context-only change', observedAt: snapshot.generatedAt, creator: { login: 'alex-demo', displayName: 'Alex', isProfileOwner: false } }] },
   };
   const html = renderShelf(state);
-  assert.doesNotMatch(html, /PR #7|demo\/other#7|Related PRs/);
+  assert.match(html, /PR #7/);
+  assert.match(html, /Created by Alex/);
   assert.match(html, /Assignee: Other/);
   assert.doesNotMatch(html, /ticket-ownership"><span>(?:followed|assigned|context) ·/);
 });
@@ -401,25 +403,23 @@ test('C11 other-owner child work is collapsed without exposing internal context 
   assert.doesNotMatch(html, /<details class="delegated-ticket" open/);
 });
 
-test('C11 an active child does not change its completed parent placement', () => {
+test('C11 an active child keeps its completed parent family in Current work', () => {
   const parent = { ...snapshot.issues[0], id: 'DEMO-10', uuid: '00000000-0000-4000-8000-000000000010', title: 'Completed context parent', url: 'https://linear.example.test/demo-workspace/issue/DEMO-10', status: { name: 'Done', type: 'completed' }, relations: [{ type: 'child', issueId: 'DEMO-11' }] };
   const child = { ...snapshot.issues[0], id: 'DEMO-11', uuid: '00000000-0000-4000-8000-000000000011', title: 'Active assigned child', url: 'https://linear.example.test/demo-workspace/issue/DEMO-11', status: { name: 'In Progress', type: 'started' }, relations: [{ type: 'parent', issueId: 'DEMO-10' }] };
   const html = renderShelf({ config, snapshot: { ...snapshot, followedIssueIds: ['DEMO-10'], issues: [parent, child] }, catalog });
-  assert.match(html, /data-fold="group:completed">[^]*Completed context parent/);
+  assert.match(html, /data-fold="group:current"[^]*Completed context parent/);
   assert.match(html, /Active assigned child/);
-  assert.doesNotMatch(html, /data-fold="group:current"/);
+  assert.doesNotMatch(html, /data-fold="group:completed"/);
 });
 
-test('C11 another owner context child cannot promote completed profile work into Current work', () => {
+test('C11 another owner active child keeps the completed family in Current work', () => {
   const parent = { ...snapshot.issues[0], id: 'DEMO-10', uuid: '00000000-0000-4000-8000-000000000010', title: 'Completed profile work', url: 'https://linear.example.test/demo-workspace/issue/DEMO-10', status: { name: 'Done', type: 'completed' }, relations: [{ type: 'child', issueId: 'DEMO-11' }] };
   const delegated = { ...snapshot.issues[0], id: 'DEMO-11', uuid: '00000000-0000-4000-8000-000000000011', title: 'Other owner active context', url: 'https://linear.example.test/demo-workspace/issue/DEMO-11', status: { name: 'In Progress', type: 'started' }, assignee: { id: 'other-owner', name: 'Other Owner' }, relations: [{ type: 'parent', issueId: 'DEMO-10' }] };
   const value = { ...snapshot, schemaVersion: 2, scope: 'assigned-followed-context', followedIssueIds: [], issues: [parent, delegated] };
   const html = renderShelf({ config, snapshot: value, catalog: null });
-  const current = html.slice(html.indexOf('Current work'), html.indexOf('<details class="focus-group focus-group-completed" data-fold="group:completed">'));
-  const completed = html.slice(html.indexOf('<details class="focus-group focus-group-completed" data-fold="group:completed">'));
-  assert.doesNotMatch(current, /Completed profile work|Other owner active context/);
-  assert.match(completed, /Completed profile work/);
-  assert.match(completed, /Other owner active context/);
+  assert.match(html, /data-fold="group:current"[^]*Completed profile work/);
+  assert.match(html, /Other owner active context/);
+  assert.doesNotMatch(html, /data-fold="group:completed"/);
 });
 
 test('C11 standalone completed work is collapsed by default', () => {
@@ -675,12 +675,12 @@ test('C12 concise README shows architecture and Quick Start; thin Skill defines 
   assert.match(readme, /FOCUS_SHELF_HOME/);
   assert.match(readme, /npm start/);
   assert.match(readme, /authorized Linear access/i);
-  assert.match(readme, /Browser-local state/i);
+  assert.match(readme, /archive\.json/i);
   assert.match(skill, /FOCUS_SHELF_HOME/);
   assert.match(skill, /localhost:8770/);
   assert.match(skill, /authoriz/i);
   assert.match(skill, /manual/i);
-  assert.match(skill, /browser.local|browser local/i);
+  assert.match(skill, /external local home/i);
 });
 
 test('C12 bundled Skill specifies connector capabilities and safe refresh requirements', async () => {
@@ -702,7 +702,7 @@ test('C02/C12 read-only --list emits the exact publication file list without exc
   assert.equal(result.status, 0);
   const files = JSON.parse(result.stdout);
   assert.ok(Array.isArray(files));
-  assert.equal(files.length, 36);
+  assert.equal(files.length, 39);
   assert.deepEqual(files, [...files].sort());
   assert.equal(new Set(files).size, files.length);
   for (const file of files) {
@@ -710,7 +710,7 @@ test('C02/C12 read-only --list emits the exact publication file list without exc
     assert.ok(!['config.json', 'linear-latest.json', 'catalog.json', 'dri.json'].includes(file));
     await readFile(join(root, file));
   }
-  for (const required of ['README.md', 'CODEX_SNAPSHOT.md', 'config/team-dri.json', 'web/icons/relation-child.svg', 'lib/dri.mjs', 'lib/shareability.mjs', 'scripts/write-codex-catalog.mjs', 'scripts/validate-shareable.mjs', 'skills/focus-shelf/SKILL.md', 'skills/generate-focus-shelf-icon/SKILL.md', 'examples/dri.example.json', 'test/snapshot-v2.test.mjs']) assert.ok(files.includes(required));
+  for (const required of ['README.md', 'CODEX_SNAPSHOT.md', 'config/team-dri.json', 'web/icons/relation-child.svg', 'lib/dri.mjs', 'lib/archive.mjs', 'lib/shareability.mjs', 'scripts/write-codex-catalog.mjs', 'scripts/validate-shareable.mjs', 'skills/focus-shelf/SKILL.md', 'skills/generate-focus-shelf-icon/SKILL.md', 'examples/dri.example.json', 'test/archive.test.mjs', 'test/snapshot-v2.test.mjs']) assert.ok(files.includes(required));
 });
 
 test('C02 shareable publication tree contains no private identifiers or data payloads', async () => {
