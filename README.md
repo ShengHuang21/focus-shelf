@@ -19,10 +19,9 @@ flowchart LR
   end
 
   subgraph Local[User's computer]
-    Data[(Local data home<br/>profile · snapshot · catalog · Memo · PR status)]
+    Data[(Local data home<br/>profile · snapshot · catalog · Memo · PR status · Archive)]
     Server[Local server<br/>localhost]
     Page[Focus Shelf page]
-    BrowserData[(Browser-local state<br/>Archive)]
   end
 
   Codex --> Skills
@@ -32,10 +31,9 @@ flowchart LR
   Data --> Server
   DRI --> Server
   Page <-->|local page and API| Server
-  Page --> BrowserData
 ```
 
-The page reads local files; it does not connect to Linear or GitHub. Codex refreshes them only when asked. Memo and manual PR selections are saved in `FOCUS_SHELF_HOME/memos.json` and `FOCUS_SHELF_HOME/pr-status.json` on this computer, shared by browsers opening the same local shelf. Archive stays in each browser. An open PR defaults to Open; a non-Draft PR becomes Ready for Review when current-head CI has passed, ignoring skipped checks and treating Release target policy failure as a warning. Manual PR selections remain saved across refreshes: if you choose Merged or Closed but GitHub still says Open, the page reminds you; verified GitHub Merged/Closed takes precedence once it happens. To try another person's shelf, use a different local data folder and port so the first person's files stay untouched.
+The page reads local files; it does not connect to Linear or GitHub. Codex refreshes them only when asked. Memo, manual PR selections and Archive are saved in `FOCUS_SHELF_HOME/memos.json`, `FOCUS_SHELF_HOME/pr-status.json` and `FOCUS_SHELF_HOME/archive.json` on this computer, shared by browsers opening the same local shelf. Previously browser-only Archive entries are imported when that original browser next opens the shelf, provided no shared Archive file exists yet. After a verified snapshot refresh, an archived parent moves to Completed when its whole visible family is Done, PR discovery is complete and no associated PR remains Open. An open PR defaults to Open; a non-Draft PR becomes Ready for Review when current-head CI has passed, ignoring skipped checks and treating Release target policy failure as a warning. Manual PR selections remain saved across refreshes: if you choose Merged or Closed but GitHub still says Open, the page reminds you; verified GitHub Merged/Closed takes precedence once it happens. To try another person's shelf, use a different local data folder and port so the first person's files stay untouched.
 
 ## Quick Start
 

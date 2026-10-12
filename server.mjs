@@ -10,6 +10,7 @@ import { validateSnapshot, validateCatalog } from './lib/snapshot.mjs';
 import { validateDri } from './lib/dri.mjs';
 import { createMemoStore } from './lib/memos.mjs';
 import { createPRStatusStore } from './lib/pr-status.mjs';
+import { createArchiveStore } from './lib/archive.mjs';
 
 const root = fileURLToPath(new URL('.', import.meta.url));
 const staticFiles = new Set(['web/index.html', 'web/app.mjs', 'web/styles.css', 'lib/local-client.mjs', 'lib/validation.mjs']);
@@ -69,6 +70,7 @@ export async function startServer({ home = process.env.FOCUS_SHELF_HOME, teamHom
   if (teamHome !== undefined) teamHome = await safeHome(teamHome);
   const memoStore = createMemoStore(home);
   const prStatusStore = createPRStatusStore(home);
+  const archiveStore = createArchiveStore(home);
   let actualPort;
   const server = createServer(async (request, response) => {
     const send = (status, body, type = 'text/plain; charset=utf-8') => { response.writeHead(status, { 'Content-Type': type, 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff', 'Content-Security-Policy': "default-src 'self'; connect-src 'self'; style-src 'self'; script-src 'self'; img-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'" }); response.end(body); };
@@ -118,6 +120,28 @@ export async function startServer({ home = process.env.FOCUS_SHELF_HOME, teamHom
         if (error.message.startsWith('PR_STATUS_REVISION_CONFLICT')) return send(409, 'PR status changed in another window; reload before saving');
         if (error.message.startsWith('PR_STATUS_IDENTITY_MISMATCH')) return send(409, 'PR profile mismatch');
         return send(500, 'PR status storage unavailable');
+      }
+    }
+    if (path === '/api/archive') {
+      response.setHeader('Allow', 'GET, PUT');
+      if (!['GET', 'PUT'].includes(request.method)) return send(405, 'GET or PUT only');
+      if (request.method === 'PUT') {
+        if (request.headers.origin !== `http://localhost:${actualPort}`) return send(403, 'Invalid Origin');
+        if (!String(request.headers['content-type'] ?? '').toLowerCase().startsWith('application/json')) return send(415, 'JSON only');
+      }
+      let config;
+      try { config = validateConfig(await readJSON(home, 'config.json')); }
+      catch { return send(409, 'Archive profile unavailable'); }
+      try {
+        const result = request.method === 'GET'
+          ? await archiveStore.read(config)
+          : await archiveStore.write(config, await readJSONBody(request, 48 * 1024));
+        return send(200, JSON.stringify(result), 'application/json; charset=utf-8');
+      } catch (error) {
+        if (error.message.startsWith('INVALID_ARCHIVE') || error instanceof SyntaxError || error.message === 'Request body too large') return send(400, 'Invalid Archive');
+        if (error.message.startsWith('ARCHIVE_REVISION_CONFLICT')) return send(409, 'Archive changed in another window; reload before saving');
+        if (error.message.startsWith('ARCHIVE_IDENTITY_MISMATCH')) return send(409, 'Archive profile mismatch');
+        return send(500, 'Archive storage unavailable');
       }
     }
     if (path === '/api/open-in-chrome') {

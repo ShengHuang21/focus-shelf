@@ -264,6 +264,32 @@ function allDescendants(item, children) {
   return (children.get(item.id) ?? []).flatMap(child => [child, ...allDescendants(child, children)]);
 }
 
+// A manually archived parent returns to Completed only after the complete
+// observed family and its PR discovery agree that no work remains.
+export function completedArchiveIds(snapshot, catalog, archived = {}) {
+  if (!snapshot || catalog?.schemaVersion !== 2) return [];
+  const issues = visibleIssues(snapshot);
+  const byId = new Map(issues.map(item => [item.id, item]));
+  const children = new Map();
+  const childIds = new Set();
+  for (const item of issues) {
+    const parent = item.relations.find(edge => edge.type === 'parent');
+    if (!parent || !byId.has(parent.issueId)) continue;
+    childIds.add(item.id);
+    children.set(parent.issueId, [...(children.get(parent.issueId) ?? []), item]);
+  }
+  const completeCoverage = new Set(catalog.coverage?.filter(item => item.pr === 'complete').map(item => item.issueId));
+  const openPRIds = new Set(catalog.pullRequests?.filter(pr => pr.state === 'open').map(pr => pr.issueId));
+  const result = [];
+  for (const root of issues.filter(item => !childIds.has(item.id) && archived[item.id])) {
+    const family = [root, ...allDescendants(root, children)];
+    if (family.every(item => item.status.type === 'completed' && completeCoverage.has(item.id) && !openPRIds.has(item.id))) {
+      result.push(...family.slice(1).filter(item => archived[item.id]).map(item => item.id), root.id);
+    }
+  }
+  return result;
+}
+
 // A Done root stays visible in Current work until its descendants and PRs are complete.
 const familyGroupType = (item, children, openPRIssueIds, overlays) => item.status.type === 'completed'
   && familyNeedsWork(item, children, openPRIssueIds, overlays) ? 'started' : item.status.type;
@@ -343,14 +369,14 @@ function renderSprintGroups(items, context) {
 }
 
 export function createUpdateRequest() {
-  return 'Please update my Focus Shelf using this repository\'s bundled focus-shelf and generate-focus-shelf-icon Skills and CODEX_SNAPSHOT.md, not personal defaults. Confirm the intended external home, profile, Linear owner/workspace and existing local origin. Collect the complete current Linear scope: issues assigned to me, all issues I created (including reassigned and unassigned issues), previously retained created or followed issues, and the full reciprocal child hierarchy; exhaust pagination. Re-verify Linear status, relationships, historical identifier aliases, Sprint start/end dates, estimate and verified Linear creation timestamps. Discover exact associated PRs from attachments, comments and GitHub references, then verify association and my PR responsibility separately using a confirmed GitHub identity; do not attribute other people\'s PRs to me or infer no PR from an incomplete search. Refresh current GitHub Open/Merged/Closed state, Draft flag, and complete CI for each current PR head. Derive Ready for Review only for a non-Draft open PR with at least one passing check and no failed, pending, neutral or unknown non-policy checks at that head; skipped checks do not block it and a Release target policy failure shows an attention triangle. Treat a Release target policy failure as an attention warning, not a CI, test, build, or lint failure; skipped or unknown checks are not failures. Preserve local-file Memo and browser-local Archive. Keep manual PR selections in the local file across refreshes. If a PR is manually marked Merged or Closed while GitHub still reports Open, retain the selection and show a clear mismatch reminder; actual GitHub terminal state remains authoritative. Retain verified PRs without silent disappearance, provide topic icons for every visible root, and reuse the private DRI map only where verified. Keep ticket status read-only; exclude Canceled/Duplicate cards and let the application own grouping, counts and formatting. Collect authoritative Sprint names and start/end dates for all issues, but group by Sprint only inside Current work and Completed. Current work uses Sprint (or No Sprint), then ownership; Completed puts the newest Sprint first and groups unsprinted families by verified creation month. Upcoming and Backlog group directly into Assigned to me, Assigned to others, and Unassigned; show To Do/Triage status on each ticket without adding status subgroups. Preserve Sprint metadata on individual tickets. Determine This/Upcoming/Past Sprint from actual dates and current time, never guessed S1/S2 boundaries; a past Sprint does not mean Done. Save the updated snapshot and catalog to this computer only after repository validation and PR continuity checks pass; otherwise leave the existing local files unchanged and report the gap. Never save raw descriptions, comments or credentials. Reload the same local page and verify rendered results when available; distinguish local save checks from unavailable browser verification.';
+  return 'Please update my Focus Shelf using this repository\'s bundled focus-shelf and generate-focus-shelf-icon Skills and CODEX_SNAPSHOT.md, not personal defaults. Confirm the intended external home, profile, Linear owner/workspace and existing local origin. Collect the complete current Linear scope: issues assigned to me, all issues I created (including reassigned and unassigned issues), previously retained created or followed issues, and the full reciprocal child hierarchy; exhaust pagination. Re-verify Linear status, relationships, historical identifier aliases, Sprint start/end dates, estimate and verified Linear creation timestamps. Discover exact associated PRs from attachments, comments and GitHub references, then verify association and my PR responsibility separately using a confirmed GitHub identity; do not attribute other people\'s PRs to me or infer no PR from an incomplete search. Refresh current GitHub Open/Merged/Closed state, Draft flag, and complete CI for each current PR head. Derive Ready for Review only for a non-Draft open PR with at least one passing check and no failed, pending, neutral or unknown non-policy checks at that head; skipped checks do not block it and a Release target policy failure shows an attention triangle. Treat a Release target policy failure as an attention warning, not a CI, test, build, or lint failure; skipped or unknown checks are not failures. Preserve local-file Memo and local-file Archive. Keep manual PR selections in the local file across refreshes. If a PR is manually marked Merged or Closed while GitHub still reports Open, retain the selection and show a clear mismatch reminder; actual GitHub terminal state remains authoritative. Retain verified PRs without silent disappearance, provide topic icons for every visible root, and reuse the private DRI map only where verified. Keep ticket status read-only; exclude Canceled/Duplicate cards and let the application own grouping, counts and formatting. Collect authoritative Sprint names and start/end dates for all issues, but group by Sprint only inside Current work and Completed. Current work uses Sprint (or No Sprint), then ownership; Completed puts the newest Sprint first and groups unsprinted families by verified creation month. Upcoming and Backlog group directly into Assigned to me, Assigned to others, and Unassigned; show To Do/Triage status on each ticket without adding status subgroups. Preserve Sprint metadata on individual tickets. Determine This/Upcoming/Past Sprint from actual dates and current time, never guessed S1/S2 boundaries; a past Sprint does not mean Done. Save the updated snapshot and catalog to this computer only after repository validation and PR continuity checks pass; otherwise leave the existing local files unchanged and report the gap. Never save raw descriptions, comments or credentials. Reload the same local page and verify rendered results when available; distinguish local save checks from unavailable browser verification.';
 }
 
 export function createDailyUpdateRequest(snapshotGeneratedAt) {
   const since = new Date(snapshotGeneratedAt);
   if (!Number.isFinite(since.valueOf())) return createUpdateRequest();
   const overlap = new Date(since.valueOf() - 24 * 60 * 60 * 1000).toISOString();
-  return `Please run a daily incremental Focus Shelf refresh using this repository's bundled focus-shelf and generate-focus-shelf-icon Skills and CODEX_SNAPSHOT.md. Use the current profile, Linear owner/workspace, GitHub identity, team DRI map and local origin already configured for this shelf. The last successfully published snapshot is ${since.toISOString()}; query Linear issues updated after ${overlap} (24-hour overlap) and exhaust pagination. Also enumerate the owner's current assigned issue IDs and issues created since ${overlap}; retain every previously published created/followed seed, including Done tickets. Merge changed records into the prior complete snapshot rather than rebuilding from a blank set. For each changed/new issue and any previously included issue whose membership or relations may have changed, refresh status, assignee, estimate, Sprint and authoritative start/end dates, createdAt, exact relations, comments/PR references and historical identifier aliases. Separately re-verify current Sprint membership for every retained issue on each daily refresh, including tickets whose prior Sprint was null: Sprint assignment can change without other meaningful ticket changes, so detect newly added, removed, or changed Sprint membership and refresh the ticket's Sprint name and authoritative dates. If complete Sprint-membership coverage for the retained set cannot be obtained, do not claim it is current or publish a partial refresh; preserve prior files and report the gap. Recursively fetch the complete reciprocal child closure for affected seeds and include every new descendant; remove an old issue only when current evidence proves it no longer belongs to the assigned/created/followed scope or any retained child closure. Preserve unaffected issue records, local-file Memo and browser-local Archive. Keep manual PR selections in the local file across refreshes. If a PR is manually marked Merged or Closed while GitHub still reports Open, retain that choice and show a clear mismatch reminder; actual GitHub terminal state remains authoritative. Discover and verify new PR associations only for changed/new affected tickets; refresh GitHub state, Draft flag, and complete CI for each known open PR and each newly discovered PR at its current head. Derive Ready for Review only for a non-Draft open PR with at least one passing check and no failed, pending, neutral or unknown non-policy checks at that head; skipped checks do not block it and a Release target policy failure shows an attention triangle. Keep prior verified associations for unaffected PRs and preserve any PR whose association or ownership remains unresolved; never infer no PR from an incomplete search. Treat Release target policy as an attention warning; skipped/unknown checks are not failures. Preserve ticket icons/workstreams for unchanged meanings and refresh topic icons only when a visible root's meaning changed or a new root appeared. Keep ticket status read-only, omit Canceled/Duplicate cards, and let the application group and format. Save a new complete snapshot/catalog pair on this computer only after affected-scope, Sprint-membership, child-closure, PR-continuity and validation checks pass; keep prior records and observations for unaffected items. If the previous snapshot is missing, identity changed, the incremental query or relationship closure is incomplete, or unexpected scope drift appears, do not save a partial delta: perform a full refresh or preserve the previous files and report the gap. Never save raw descriptions, comments or credentials. Reload the same local page and report API/local-save checks separately from any unavailable visual browser verification.`;
+  return `Please run a daily incremental Focus Shelf refresh using this repository's bundled focus-shelf and generate-focus-shelf-icon Skills and CODEX_SNAPSHOT.md. Use the current profile, Linear owner/workspace, GitHub identity, team DRI map and local origin already configured for this shelf. The last successfully published snapshot is ${since.toISOString()}; query Linear issues updated after ${overlap} (24-hour overlap) and exhaust pagination. Also enumerate the owner's current assigned issue IDs and issues created since ${overlap}; retain every previously published created/followed seed, including Done tickets. Merge changed records into the prior complete snapshot rather than rebuilding from a blank set. For each changed/new issue and any previously included issue whose membership or relations may have changed, refresh status, assignee, estimate, Sprint and authoritative start/end dates, createdAt, exact relations, comments/PR references and historical identifier aliases. Separately re-verify current Sprint membership for every retained issue on each daily refresh, including tickets whose prior Sprint was null: Sprint assignment can change without other meaningful ticket changes, so detect newly added, removed, or changed Sprint membership and refresh the ticket's Sprint name and authoritative dates. If complete Sprint-membership coverage for the retained set cannot be obtained, do not claim it is current or publish a partial refresh; preserve prior files and report the gap. Recursively fetch the complete reciprocal child closure for affected seeds and include every new descendant; remove an old issue only when current evidence proves it no longer belongs to the assigned/created/followed scope or any retained child closure. Preserve unaffected issue records, local-file Memo and local-file Archive. Keep manual PR selections in the local file across refreshes. If a PR is manually marked Merged or Closed while GitHub still reports Open, retain that choice and show a clear mismatch reminder; actual GitHub terminal state remains authoritative. Discover and verify new PR associations only for changed/new affected tickets; refresh GitHub state, Draft flag, and complete CI for each known open PR and each newly discovered PR at its current head. Derive Ready for Review only for a non-Draft open PR with at least one passing check and no failed, pending, neutral or unknown non-policy checks at that head; skipped checks do not block it and a Release target policy failure shows an attention triangle. Keep prior verified associations for unaffected PRs and preserve any PR whose association or ownership remains unresolved; never infer no PR from an incomplete search. Treat Release target policy as an attention warning; skipped/unknown checks are not failures. Preserve ticket icons/workstreams for unchanged meanings and refresh topic icons only when a visible root's meaning changed or a new root appeared. Keep ticket status read-only, omit Canceled/Duplicate cards, and let the application group and format. Save a new complete snapshot/catalog pair on this computer only after affected-scope, Sprint-membership, child-closure, PR-continuity and validation checks pass; keep prior records and observations for unaffected items. If the previous snapshot is missing, identity changed, the incremental query or relationship closure is incomplete, or unexpected scope drift appears, do not save a partial delta: perform a full refresh or preserve the previous files and report the gap. Never save raw descriptions, comments or credentials. Reload the same local page and report API/local-save checks separately from any unavailable visual browser verification.`;
 }
 
 export function renderShelf({ config, snapshot, catalog, dri, overlays = {}, readOnly = true, readOnlyReason = '', saveState = 'idle', revealIssueId = null, now = new Date().toISOString() }) {
@@ -494,14 +520,16 @@ if (typeof document !== 'undefined') {
   let client;
   let memoState = { revision: 0, memos: {} };
   let prStatusState = { revision: 0, statuses: {} };
+  let archiveState = { revision: 0, archived: {}, initialized: false };
   const main = document.querySelector('main');
-  const currentOverlays = () => ({ ...client.getOverlays(), memos: memoState.memos, prStatus: prStatusState.statuses });
+  const currentOverlays = () => ({ ...client.getOverlays(), memos: memoState.memos, prStatus: prStatusState.statuses, archived: archiveState.archived });
   async function reload() {
     const response = await fetch('/api/shelf', { cache: 'no-store' });
     if (!response.ok) throw new Error('Local snapshot unavailable');
     const next = await response.json();
     let nextMemos = { revision: 0, memos: {} };
     let nextPRStatus = { revision: 0, statuses: {} };
+    let nextArchive = { revision: 0, archived: {}, initialized: false };
     if (next.config) {
       const memoResponse = await fetch('/api/memos', { cache: 'no-store' });
       if (!memoResponse.ok) throw new Error('Local Memo unavailable');
@@ -509,10 +537,47 @@ if (typeof document !== 'undefined') {
       const prStatusResponse = await fetch('/api/pr-status', { cache: 'no-store' });
       if (!prStatusResponse.ok) throw new Error('Local PR status unavailable');
       nextPRStatus = await prStatusResponse.json();
+      const archiveResponse = await fetch('/api/archive', { cache: 'no-store' });
+      if (!archiveResponse.ok) throw new Error('Local Archive unavailable');
+      nextArchive = await archiveResponse.json();
     }
     if (client) client.acceptShelf(next);
     else client = await createLocalClient({ config: next.config, storage: window.localStorage, locks: navigator.locks });
-    shelf = next; memoState = nextMemos; prStatusState = nextPRStatus; render();
+    // Import archived tickets from this browser only while no shared Archive file exists.
+    // A fresh browser with no old entries leaves the file absent, so the original
+    // browser can still transfer its entries when opened later.
+    if (next.config && !nextArchive.initialized) {
+      const legacyIds = Object.entries(client.getOverlays().archived ?? {})
+        .filter(([id, archived]) => archived === true && /^[A-Za-z0-9][A-Za-z0-9_.-]{0,199}$/.test(id))
+        .map(([id]) => id);
+      if (legacyIds.length) {
+        const response = await fetch('/api/archive', { method: 'PUT', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ legacyIds, expectedRevision: nextArchive.revision }) });
+        if (response.ok) nextArchive = await response.json();
+        else if (response.status === 409) {
+          const refreshed = await fetch('/api/archive', { cache: 'no-store' });
+          if (!refreshed.ok) throw new Error('Local Archive unavailable');
+          nextArchive = await refreshed.json();
+        } else throw new Error('Existing browser Archive could not be transferred');
+      }
+    }
+    let archiveSyncError = '';
+    for (const id of completedArchiveIds(next.snapshot, next.catalog, nextArchive.archived)) {
+      try {
+        const response = await fetch('/api/archive', { method: 'PUT', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id, archived: false, expectedRevision: nextArchive.revision }) });
+        if (!response.ok) throw new Error('Archive save rejected');
+        nextArchive = await response.json();
+      } catch {
+        archiveSyncError = 'Completed Archive could not be updated; reload before editing.';
+        break;
+      }
+    }
+    shelf = next; memoState = nextMemos; prStatusState = nextPRStatus; archiveState = nextArchive; render();
+    if (archiveSyncError) {
+      const notice = main.querySelector('.local-status') ?? main.querySelector('.writer-notice span');
+      if (notice) { notice.hidden = false; notice.textContent = archiveSyncError; notice.classList.add('error'); }
+    }
   }
   function render(revealIssueId = null) {
     const folds = new Map([...main.querySelectorAll('details[data-fold]')].map(node => [node.dataset.fold, node.open]));
@@ -521,7 +586,6 @@ if (typeof document !== 'undefined') {
       if ((!revealIssueId || !node.open) && folds.has(node.dataset.fold)) node.open = folds.get(node.dataset.fold);
     });
     const errors = () => { const node = main.querySelector('.local-status') ?? main.querySelector('.writer-notice'); node.hidden = false; node.textContent = `Save failed · ${client.readOnlyReason || 'Local storage or input unavailable'}`; node.classList.add('error'); };
-    const action = (fn, reveal = null) => { try { fn(); render(reveal); if (reveal) main.querySelector(`[data-archive="${CSS.escape(reveal)}"]`)?.scrollIntoView({ block: 'center' }); } catch { errors(); } };
     main.querySelectorAll('[data-focus-issue]').forEach(node => { node.onclick = () => {
       const id = node.dataset.focusIssue;
       render(id);
@@ -587,8 +651,18 @@ if (typeof document !== 'undefined') {
           return;
         }
       }
-      const restoring = client.isArchived(id);
-      action(() => client.setArchived(id, !restoring), restoring ? id : null);
+      const restoring = Boolean(archiveState.archived[id]);
+      try {
+        const response = await fetch('/api/archive', { method: 'PUT', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id, archived: !restoring, expectedRevision: archiveState.revision }) });
+        if (!response.ok) throw new Error(response.status === 409 ? 'Archive changed in another window. Reload before saving.' : 'Archive was not saved.');
+        archiveState = await response.json();
+        render(restoring ? id : null);
+        if (restoring) main.querySelector(`[data-archive="${CSS.escape(id)}"]`)?.scrollIntoView({ block: 'center' });
+      } catch (error) {
+        const status = main.querySelector('.local-status') ?? main.querySelector('.writer-notice');
+        status.hidden = false; status.textContent = error.message || 'Archive was not saved'; status.classList.add('error');
+      }
     }; });
     main.querySelectorAll('[data-pr]').forEach(node => { node.onchange = async () => {
       const key = node.dataset.pr;

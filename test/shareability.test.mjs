@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFile, readdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
-import { renderShelf, createReport, createReportHtml, createUpdateRequest, createDailyUpdateRequest, formatAssigneeName, formatDriName, renderTicketIcon, displayedPRState } from '../web/app.mjs';
+import { renderShelf, createReport, createReportHtml, createUpdateRequest, createDailyUpdateRequest, formatAssigneeName, formatDriName, renderTicketIcon, displayedPRState, completedArchiveIds } from '../web/app.mjs';
 import { config, snapshot, catalog, dri, snapshotV2, catalogV2 } from './helpers.mjs';
 
 const root = new URL('..', import.meta.url).pathname;
@@ -247,7 +247,7 @@ test('C11 top Update control prepares an explicit Codex refresh request without 
   assert.match(request, /Please update my Focus Shelf/);
   assert.match(request, /all issues I created \(including reassigned and unassigned issues\)/);
   assert.match(request, /exact associated PRs/);
-  assert.match(request, /Preserve local-file Memo, browser-local Archive/);
+  assert.match(request, /Preserve local-file Memo, local-file Archive/);
   assert.match(request, /Release target policy failure as an attention warning/);
   assert.match(request, /Reload the same local page and verify rendered results when available/);
   assert.doesNotMatch(html, /Update complete|Synchronized|Synced/);
@@ -275,6 +275,20 @@ test('C11 archiving a parent keeps its child tree together in Archive', () => {
   const restoredParent = renderShelf({ ...state, overlays: { archived: { 'DEMO-10': false, 'DEMO-11': true } } });
   assert.match(restoredParent, /Archive · 1/);
   assert.match(restoredParent, /data-fold="children:DEMO-10"[^]*?<span>· 0 tasks · 1 archived<\/span>/);
+});
+
+test('Archived parent returns to Completed only when every child and associated PR is complete', () => {
+  const parent = { ...snapshot.issues[0], id: 'DEMO-10', status: { name: 'Done', type: 'completed' }, relations: [{ type: 'child', issueId: 'DEMO-11' }] };
+  const child = { ...snapshot.issues[0], id: 'DEMO-11', status: { name: 'In Progress', type: 'started' }, relations: [{ type: 'parent', issueId: 'DEMO-10' }] };
+  const scope = { ...snapshotV2, issues: [parent, child] };
+  const coverage = [parent, child].map(item => ({ issueId: item.id, pr: 'complete' }));
+  const catalog = { schemaVersion: 2, coverage, pullRequests: [] };
+  const archived = { 'DEMO-10': true, 'DEMO-11': true };
+  assert.deepEqual(completedArchiveIds(scope, catalog, archived), []);
+  const done = { ...scope, issues: [parent, { ...child, status: { name: 'Done', type: 'completed' } }] };
+  assert.deepEqual(completedArchiveIds(done, { ...catalog, coverage: [{ issueId: parent.id, pr: 'unavailable' }, coverage[1]] }, archived), []);
+  assert.deepEqual(completedArchiveIds(done, { ...catalog, pullRequests: [{ issueId: child.id, state: 'open' }] }, archived), []);
+  assert.deepEqual(completedArchiveIds(done, catalog, archived), ['DEMO-11', 'DEMO-10']);
 });
 
 test('C11 restoring a completed ticket opens its destination group instead of making it appear lost', () => {
