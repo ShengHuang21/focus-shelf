@@ -11,14 +11,21 @@ No database or Docker. The local server serves the page and reads the Git-ignore
 ## Before you start
 
 - Node.js 22+, Git, a browser, and Codex with access to this checkout.
-- Authorized Linear connector/MCP access to read tickets, plus GitHub CLI or connector access for PR/CI details. Sign in through those tools as needed; never put credentials in this repository.
-- Know which Linear workspace and person this shelf is for. Codex can help confirm the exact owner ID and GitHub account before the first refresh.
+- Required for a real shelf: an authorized Linear connector/MCP that Codex can use to read the complete ticket scope in your workspace.
+- For PR and CI details: an authenticated GitHub CLI (`gh`) or authorized GitHub connector/MCP with access to the relevant repositories. No particular GitHub Skill is required. Without this access, tickets can still appear, but PR/CI coverage remains unverified.
+- Codex can help confirm your Linear owner and GitHub identity. Sign in through the integrations as needed; never put credentials in this repository.
 
 ## Quick start with Codex
 
 Paste this into Codex. It will clone the repository and set up your own shelf:
 
-> Set up Focus Shelf for me from https://github.com/ShengHuang21/focus-shelf.git. Clone the repository if needed, then use its bundled `skills/focus-shelf/SKILL.md`, `skills/generate-focus-shelf-icon/SKILL.md`, and `CODEX_SNAPSHOT.md`—not personal defaults. Confirm my Linear workspace and owner, GitHub identity, timezone, and local URL. Keep my config and data in the Git-ignored `.focus-shelf/` folder. Perform the complete first refresh of my assigned, created, and followed tickets and related PRs; validate before saving. Start the local server and show me the page. Do not use demo data or guess my identity. If required Linear coverage is missing, leave existing data unchanged and tell me what is missing.
+```text
+Set up my personal Focus Shelf from https://github.com/ShengHuang21/focus-shelf.git; clone it if needed. Follow this repository's bundled focus-shelf and generate-focus-shelf-icon Skills and CODEX_SNAPSHOT.md, not personal defaults.
+
+Check that Codex has authorized Linear MCP/connector access to my complete ticket scope; tell me what to connect if it does not. Confirm my workspace, owner, and timezone from my account, asking about any unclear identity details. Use an authenticated GitHub CLI or connector for PR/CI if available; otherwise mark PR/CI coverage unavailable, not “no PRs.”
+
+Keep my config and data in the Git-ignored .focus-shelf/ folder and preserve any existing setup. Use verified account data, not the demo. Run the complete first refresh through the repository writers and validate before saving. If Linear coverage is incomplete, preserve existing data or leave a new shelf without snapshot/catalog, and explain the gap. Start the local server and show me its URL.
+```
 
 ## Manual quick start (demo)
 
