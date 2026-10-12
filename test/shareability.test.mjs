@@ -58,10 +58,12 @@ test('Missing or incomplete PR evidence is not reported as a definite empty revi
   assert.match(createReportHtml(missing), /<li>PR review status not fully checked\.<\/li>/);
 
   const incomplete = { ...catalogV2, coverage: catalogV2.coverage.map(item => item.issueId === 'DEMO-1' ? { ...item, pr: 'unavailable', ci: 'unavailable' } : item) };
-  assert.match(renderShelf({ config, snapshot: snapshotV2, catalog: incomplete }), /PR list not fully checked/);
+  const incompleteShelf = renderShelf({ config, snapshot: snapshotV2, catalog: incomplete });
+  assert.match(incompleteShelf, /PR #42/);
+  assert.doesNotMatch(incompleteShelf, /PR list not fully checked|PR review status not fully checked/);
   assert.match(createReport({ snapshot: snapshotV2, catalog: incomplete }), /PR review status not fully checked/);
 
-  assert.match(renderShelf({ config, snapshot: snapshotV2, catalog: catalogV2 }), /PR review status not fully checked/);
+  assert.doesNotMatch(renderShelf({ config, snapshot: snapshotV2, catalog: catalogV2 }), /PR review status not fully checked/);
 
   const completeEmpty = { ...catalogV2, pullRequests: [], ciObservations: [], coverage: catalogV2.coverage.map(item => ({ ...item, ci: 'not-applicable' })) };
   assert.match(createReport({ snapshot: snapshotV2, catalog: completeEmpty }), /Ready for Review\n• None\./);

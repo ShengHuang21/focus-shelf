@@ -176,12 +176,7 @@ function renderDri(presentation, maps, sprint = null) {
 
 function renderPRs(item, catalog, overlays, readOnly, readOnlyReason, maps) {
   const prs = (catalog?.pullRequests ?? []).filter(pr => pr.issueId === item.id);
-  if (!catalog) return '';
-  const note = !prCollectionComplete(catalog, item.id)
-    ? '<span class="pr-coverage-note">PR list not fully checked</span>'
-    : prs.some(pr => pr.state === 'open' && (pr.isDraft === undefined || !currentCIObservation(catalog, pr)))
-      ? '<span class="pr-coverage-note">PR review status not fully checked</span>' : '';
-  if (!prs.length && !note) return '';
+  if (!prs.length) return '';
   return `<div class="ticket-prs">${prs.map(pr => {
     const key = prKey(pr);
     const state = displayedPRState(pr, overlays, catalog);
@@ -199,7 +194,7 @@ function renderPRs(item, catalog, overlays, readOnly, readOnlyReason, maps) {
     const creator = pr.creator?.isProfileOwner === false ? `<span class="pr-creator" title="GitHub author: ${escape(pr.creator.login)}">Created by ${escape(pr.creator.displayName ?? pr.creator.login)}</span>` : '';
     const selectTitle = terminal ? 'Current GitHub terminal state' : readOnly ? `Choose a status to request editing: ${readOnlyReason || 'read-only window'}` : 'Set a local status; GitHub state is checked separately on the next Codex refresh';
     return `<div class="ticket-pr-entry"><span class="repo-badge repo-${escape(tone)}">${escape(repoLabel)}</span><span class="branch-badge">${escape(pr.baseBranch)}</span>${link(pr.url, `PR #${pr.number}`, 'pr-link')}${creator}<select class="pr-status pr-status-${escape(state)}" data-pr="${escape(key)}" title="${escape(selectTitle)}" ${terminal ? 'disabled' : ''}>${statusOptions.map(([value, label]) => `<option value="${value}" ${value === state ? 'selected' : ''}>${label}</option>`).join('')}</select>${mismatchBadge}${conflict}${reviewBadge}${ciIcon}</div>`;
-  }).join('')}${note}</div>`;
+  }).join('')}</div>`;
 }
 
 function renderReferences(item, byId) {
