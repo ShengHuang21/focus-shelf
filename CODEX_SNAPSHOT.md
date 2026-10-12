@@ -1,5 +1,7 @@
 # Explicit local snapshot contract
 
+In Current work and Completed, group an entire parent/child family solely by the visible root ticket's own Linear Sprint. Child and grandchild Sprint values remain their own issue metadata and never turn the family's group into `Multiple Sprints`; a root without a Sprint stays in the unsprinted group even if a child has one.
+
 Use the common reviewed First/Second DRI map at `config/team-dri.json` for every profile unless `FOCUS_SHELF_TEAM_HOME` explicitly provides a local team override. Preserve blank assignments. Only assign an exact workstream to a ticket using verified capability/scope evidence, never the ticket assignee or title keywords alone. A refresh must not rewrite the map or replace it with historical personal defaults. The shared map may contain team workstream names and DRI names only; never put per-profile identity, email, employee ID, personal notes, ticket payloads or credentials in it.
 
 This procedure requires an explicit user request and existing authorization to read the relevant external workspace. Opening or editing Focus Shelf never invokes it. No credentials, descriptions, comments, attachments, customer payloads, raw responses or error bodies belong in a snapshot.

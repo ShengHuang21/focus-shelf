@@ -492,15 +492,20 @@ test('C11 parent DRI row shows one compact Sprint badge after Second DRI', () =>
   assert.match(html, /class="dri-secondary"><strong>Second DRI:<\/strong> Second<\/span><span class="sprint-badge"[^>]*>Sprint 26\.10\.S1<\/span>/);
 });
 
-test('C11 a parent-child family stays intact and reports mixed Sprint membership instead of splitting children', () => {
+test('C11 a parent-child family groups by the parent Sprint, not the child Sprint', () => {
   const one = { name: 'Sprint 26.10.S1', startDate: '2026-10-01T00:00:00.000Z', endDate: '2026-10-20T23:59:59.000Z' };
   const two = { name: 'Sprint 26.10.S2', startDate: '2026-10-21T00:00:00.000Z', endDate: '2026-11-10T23:59:59.000Z' };
   const parent = { ...snapshot.issues[0], id: 'DEMO-20', uuid: '00000000-0000-4000-8000-000000000020', title: 'Mixed parent', url: 'https://linear.example.test/demo-workspace/issue/DEMO-20', sprint: one, relations: [{ type: 'child', issueId: 'DEMO-21' }] };
   const child = { ...snapshot.issues[0], id: 'DEMO-21', uuid: '00000000-0000-4000-8000-000000000021', title: 'Mixed child', url: 'https://linear.example.test/demo-workspace/issue/DEMO-21', sprint: two, relations: [{ type: 'parent', issueId: 'DEMO-20' }] };
-  const html = renderShelf({ config, snapshot: { ...snapshot, issues: [parent, child] }, catalog });
-  const mixed = html.slice(html.indexOf('Multiple Sprints'));
-  assert.match(mixed, /Mixed parent/);
-  assert.match(mixed, /Mixed child/);
+  const html = renderShelf({ config, snapshot: { ...snapshot, issues: [parent, child] }, catalog, now: '2026-10-09T00:00:00.000Z' });
+  const parentGroup = html.slice(html.indexOf('This Sprint · Sprint 26.10.S1'));
+  assert.match(parentGroup, /Mixed parent/);
+  assert.match(parentGroup, /Mixed child/);
+  assert.doesNotMatch(html, /Multiple Sprints/);
+
+  const unsprinted = renderShelf({ config, snapshot: { ...snapshot, issues: [{ ...parent, sprint: null }, child] }, catalog, now: '2026-10-09T00:00:00.000Z' });
+  assert.match(unsprinted, /No Sprint/);
+  assert.doesNotMatch(unsprinted, /This Sprint · Sprint 26.10.S2/);
 });
 
 test('C11 Slack report uses Ready for Review and In Progress sections with linked nested PRs', () => {

@@ -294,20 +294,11 @@ export function completedArchiveIds(snapshot, catalog, archived = {}) {
 const familyGroupType = (item, children, openPRIssueIds, overlays) => item.status.type === 'completed'
   && familyNeedsWork(item, children, openPRIssueIds, overlays) ? 'started' : item.status.type;
 
-function familySprintGroup(item, children, overlays, observedAt) {
-  function visibleFamily(current) {
-    const visibleChildren = activeRoots(children.get(current.id) ?? [], children, overlays);
-    return [current, ...visibleChildren.flatMap(visibleFamily)];
-  }
-  const sprints = new Map();
-  for (const member of visibleFamily(item)) {
-    if (!member.sprint) continue;
-    const key = [member.sprint.name, member.sprint.startDate, member.sprint.endDate].join('\u0000');
-    sprints.set(key, member.sprint);
-  }
-  if (!sprints.size) return { key: 'none', kind: 'none', label: 'No Sprint', rank: 3, start: '' };
-  if (sprints.size > 1) return { key: `mixed:${[...sprints.keys()].sort().join('|')}`, kind: 'mixed', label: 'Multiple Sprints', rank: 2, start: '' };
-  const [key, sprint] = [...sprints.entries()][0];
+function familySprintGroup(item, observedAt) {
+  // A family stays together, but only its root ticket decides the Sprint group.
+  const sprint = item.sprint;
+  if (!sprint) return { key: 'none', kind: 'none', label: 'No Sprint', rank: 3, start: '' };
+  const key = [sprint.name, sprint.startDate, sprint.endDate].join('\u0000');
   const now = Date.parse(observedAt);
   const start = Date.parse(sprint.startDate);
   const end = Date.parse(sprint.endDate);
@@ -344,7 +335,7 @@ function renderSprintGroups(items, context) {
   const completed = context.workGroup === 'completed';
   const sprintGroups = new Map();
   for (const item of items) {
-    let group = familySprintGroup(item, context.children, context.overlays, context.snapshotGeneratedAt);
+    let group = familySprintGroup(item, context.snapshotGeneratedAt);
     if (completed && group.kind === 'none') {
       const date = new Date(item.createdAt ?? NaN);
       if (Number.isFinite(date.getTime())) {
@@ -353,7 +344,7 @@ function renderSprintGroups(items, context) {
         const month = `${parts.find(part => part.type === 'year').value}-${parts.find(part => part.type === 'month').value}`;
         group = { key: `month:${month}`, kind: 'month', label: new Intl.DateTimeFormat('en', { ...options, month: 'long' }).format(date), rank: 1, start: month };
       } else group = { key: 'undated', kind: 'undated', label: 'Undated', rank: 2, start: '' };
-    } else if (completed) group = { ...group, rank: 0, label: group.kind === 'mixed' || /^Sprint\b/i.test(group.name) ? group.label.replace(/^(This|Upcoming|Past)? ?Sprint · /, '') : `Sprint · ${group.name}` };
+    } else if (completed) group = { ...group, rank: 0, label: /^Sprint\b/i.test(group.name) ? group.name : `Sprint · ${group.name}` };
     const current = sprintGroups.get(group.key) ?? { ...group, items: [] };
     current.items.push(item);
     sprintGroups.set(group.key, current);
