@@ -24,7 +24,7 @@ Set up my personal Focus Shelf from https://github.com/ShengHuang21/focus-shelf.
 
 Check that Codex has authorized Linear MCP/connector access to my complete ticket scope; tell me what to connect if it does not. Confirm my workspace, owner, and timezone from my account, asking about any unclear identity details. Use an authenticated GitHub CLI or connector for PR/CI if available; otherwise mark PR/CI coverage unavailable, not “no PRs.”
 
-Keep my config and data in the Git-ignored .focus-shelf/ folder and preserve any existing setup. Use verified account data, not the demo. Run the complete first refresh through the repository writers and validate before saving. If Linear coverage is incomplete, preserve existing data or leave a new shelf without snapshot/catalog, and explain the gap. Start the local server and show me its URL.
+Keep my config and data in the Git-ignored .focus-shelf/ folder and preserve any existing setup. Use verified account data, not the demo. If required Linear access or coverage is missing, stop and explain the gap; preserve existing data and leave a new shelf without snapshot/catalog. Otherwise, collect and validate the complete snapshot/presentation-catalog pair, marking PR/CI coverage unavailable where needed. Save through the snapshot writer, then the catalog writer, and verify the saved pair. Only then start or reuse the local server and show me its URL.
 ```
 
 ## Manual quick start (demo)
