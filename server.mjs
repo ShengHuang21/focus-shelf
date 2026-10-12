@@ -8,6 +8,8 @@ import { resolveDataHome, validateConfig } from './lib/config.mjs';
 import { safeHome, readJSON } from './lib/files.mjs';
 import { validateSnapshot, validateCatalog } from './lib/snapshot.mjs';
 import { validateDri } from './lib/dri.mjs';
+import { createMemoStore } from './lib/memos.mjs';
+import { createPRStatusStore } from './lib/pr-status.mjs';
 
 const root = fileURLToPath(new URL('.', import.meta.url));
 const staticFiles = new Set(['web/index.html', 'web/app.mjs', 'web/styles.css', 'lib/local-client.mjs', 'lib/validation.mjs']);
@@ -65,6 +67,8 @@ function approvedExternalLinks(state) {
 export async function startServer({ home = process.env.FOCUS_SHELF_HOME, teamHome = process.env.FOCUS_SHELF_TEAM_HOME, port = 8770, openExternal = openInChrome } = {}) {
   home = resolveDataHome({ home });
   if (teamHome !== undefined) teamHome = await safeHome(teamHome);
+  const memoStore = createMemoStore(home);
+  const prStatusStore = createPRStatusStore(home);
   let actualPort;
   const server = createServer(async (request, response) => {
     const send = (status, body, type = 'text/plain; charset=utf-8') => { response.writeHead(status, { 'Content-Type': type, 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff', 'Content-Security-Policy': "default-src 'self'; connect-src 'self'; style-src 'self'; script-src 'self'; img-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'" }); response.end(body); };
@@ -72,6 +76,50 @@ export async function startServer({ home = process.env.FOCUS_SHELF_HOME, teamHom
     let path;
     try { path = decodeURIComponent((request.url ?? '').split('?')[0]); } catch { return send(404, 'Not found'); }
     if (path.includes('..') || path.includes('\\') || path.includes('\0')) return send(404, 'Not found');
+    if (path === '/api/memos') {
+      response.setHeader('Allow', 'GET, PUT');
+      if (!['GET', 'PUT'].includes(request.method)) return send(405, 'GET or PUT only');
+      if (request.method === 'PUT') {
+        if (request.headers.origin !== `http://localhost:${actualPort}`) return send(403, 'Invalid Origin');
+        if (!String(request.headers['content-type'] ?? '').toLowerCase().startsWith('application/json')) return send(415, 'JSON only');
+      }
+      let config;
+      try { config = validateConfig(await readJSON(home, 'config.json')); }
+      catch { return send(409, 'Memo profile unavailable'); }
+      try {
+        const result = request.method === 'GET'
+          ? await memoStore.read(config)
+          : await memoStore.write(config, await readJSONBody(request, 48 * 1024));
+        return send(200, JSON.stringify(result), 'application/json; charset=utf-8');
+      } catch (error) {
+        if (error.message.startsWith('INVALID_MEMO') || error instanceof SyntaxError || error.message === 'Request body too large') return send(400, 'Invalid Memo');
+        if (error.message.startsWith('MEMO_REVISION_CONFLICT')) return send(409, 'Memo changed in another window; reload before saving');
+        if (error.message.startsWith('MEMO_IDENTITY_MISMATCH')) return send(409, 'Memo profile mismatch');
+        return send(500, 'Memo storage unavailable');
+      }
+    }
+    if (path === '/api/pr-status') {
+      response.setHeader('Allow', 'GET, PUT');
+      if (!['GET', 'PUT'].includes(request.method)) return send(405, 'GET or PUT only');
+      if (request.method === 'PUT') {
+        if (request.headers.origin !== `http://localhost:${actualPort}`) return send(403, 'Invalid Origin');
+        if (!String(request.headers['content-type'] ?? '').toLowerCase().startsWith('application/json')) return send(415, 'JSON only');
+      }
+      const shelf = await loadShelfState(home, teamHome);
+      if (!shelf.config) return send(409, 'PR profile unavailable');
+      try {
+        if (request.method === 'GET') return send(200, JSON.stringify(await prStatusStore.read(shelf.config)), 'application/json; charset=utf-8');
+        const input = await readJSONBody(request);
+        const pr = shelf.catalog?.pullRequests.find(item => `${item.repository}#${item.number}` === input?.key);
+        if (!pr || pr.state !== 'open') return send(409, 'PR is not currently open in the local catalog');
+        return send(200, JSON.stringify(await prStatusStore.write(shelf.config, { ...input, observedAt: pr.observedAt })), 'application/json; charset=utf-8');
+      } catch (error) {
+        if (error.message.startsWith('INVALID_PR_STATUS') || error instanceof SyntaxError || error.message === 'Request body too large') return send(400, 'Invalid PR status');
+        if (error.message.startsWith('PR_STATUS_REVISION_CONFLICT')) return send(409, 'PR status changed in another window; reload before saving');
+        if (error.message.startsWith('PR_STATUS_IDENTITY_MISMATCH')) return send(409, 'PR profile mismatch');
+        return send(500, 'PR status storage unavailable');
+      }
+    }
     if (path === '/api/open-in-chrome') {
       response.setHeader('Allow', 'POST');
       if (request.method !== 'POST') return send(405, 'POST only');

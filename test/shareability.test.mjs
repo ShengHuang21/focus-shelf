@@ -247,7 +247,7 @@ test('C11 top Update control prepares an explicit Codex refresh request without 
   assert.match(request, /Please update my Focus Shelf/);
   assert.match(request, /all issues I created \(including reassigned and unassigned issues\)/);
   assert.match(request, /exact associated PRs/);
-  assert.match(request, /Preserve browser-local Memo, Archive/);
+  assert.match(request, /Preserve local-file Memo, browser-local Archive/);
   assert.match(request, /Release target policy failure as an attention warning/);
   assert.match(request, /Reload the same local page and verify rendered results when available/);
   assert.doesNotMatch(html, /Update complete|Synchronized|Synced/);
@@ -625,44 +625,52 @@ test('C11 GitHub terminal PR state overrides an older local review selection', (
   assert.doesNotMatch(createReport({ snapshot: snapshotV2, catalog: value, overlays }), /repository #42|demo\/repository#42/);
 });
 
+test('C11 manual Merged survives a later Open observation with an explicit GitHub warning', () => {
+  const value = structuredClone(catalogV2);
+  value.pullRequests[0].observedAt = '2026-10-10T00:00:00.000Z';
+  const overlays = { prStatus: { 'demo/repository#42': { status: 'merged', observedAt: '2026-10-09T00:00:00.000Z' } } };
+  assert.equal(displayedPRState(value.pullRequests[0], overlays, value), 'merged');
+  const html = renderShelf({ config, snapshot: snapshotV2, catalog: value, overlays });
+  assert.match(html, /pr-status-merged/);
+  assert.match(html, /Not merged on GitHub/);
+  value.pullRequests[0].state = 'merged';
+  assert.doesNotMatch(renderShelf({ config, snapshot: snapshotV2, catalog: value, overlays }), /Not merged on GitHub/);
+});
+
 test('C11 production browser code uses local API and no Chrome/external service primitives', async () => {
   const source = await readFile(join(root, 'web/app.mjs'), 'utf8');
   assert.match(source, /\/api\/shelf/);
   assert.doesNotMatch(source, /chrome\.|api\.linear\.app|api\.github\.com|sendMessage\s*\(/);
 });
 
-test('C12 README and thin Skill explain exact local setup and explicit authorized manual refresh', async () => {
+test('C12 concise README shows architecture and Quick Start; thin Skill defines refresh', async () => {
   const readme = await readFile(join(root, 'README.md'), 'utf8');
   const skill = await readFile(join(root, 'skills/focus-shelf/SKILL.md'), 'utf8');
-  for (const text of [readme, skill]) {
-    assert.match(text, /FOCUS_SHELF_HOME/);
-    assert.match(text, /localhost:8770/);
-    assert.match(text, /authoriz/i);
-    assert.match(text, /manual/i);
-    assert.match(text, /browser.local|browser local/i);
-  }
+  assert.match(readme, /## Architecture[\s\S]*```mermaid/);
+  assert.match(readme, /## Quick Start/);
+  assert.match(readme, /FOCUS_SHELF_HOME/);
   assert.match(readme, /npm start/);
-  assert.match(readme, /EADDRINUSE/);
+  assert.match(readme, /authorized Linear access/i);
+  assert.match(readme, /Browser-local state/i);
+  assert.match(skill, /FOCUS_SHELF_HOME/);
+  assert.match(skill, /localhost:8770/);
+  assert.match(skill, /authoriz/i);
+  assert.match(skill, /manual/i);
+  assert.match(skill, /browser.local|browser local/i);
 });
 
-test('C12 docs specify authorized connector capabilities and separate demo from real first refresh', async () => {
+test('C12 bundled Skill specifies connector capabilities and safe refresh requirements', async () => {
   const readme = await readFile(join(root, 'README.md'), 'utf8');
   const skill = await readFile(join(root, 'skills/focus-shelf/SKILL.md'), 'utf8');
-  for (const content of [readme, skill]) {
-    assert.match(content, /Linear connector\/MCP/);
-    assert.match(content, /assigned[\s\S]*created[\s\S]*prior created and followed[\s\S]*relations[\s\S]*Sprint/);
-    assert.match(content, /GitHub connector\/MCP[\s\S]*logged-in CLI/);
-    assert.match(content, /verified associated PR[\s\S]*complete checks\/status/);
-    assert.match(content, /credentials[\s\S]*config/i);
-    assert.match(content, /preserve[\s\S]*previous|preserve[\s\S]*existing/i);
-  }
-  assert.match(readme, /Demo home/);
-  assert.match(readme, /Real home/);
-  assert.match(readme, /only[\s\S]*config\.json/i);
-  assert.match(readme, /Do not copy[\s\S]*demo snapshot[\s\S]*catalog/i);
-  assert.match(readme, /first refresh/i);
-  assert.match(readme, /Update[\s\S]*cop(?:y|ies)[\s\S]*Codex/i);
-  assert.match(readme, /node scripts\/validate-shareable\.mjs --list/);
+  assert.match(readme, /Linear/);
+  assert.match(readme, /GitHub/);
+  assert.match(readme, /does not connect to Linear or GitHub/);
+  assert.match(skill, /Linear connector\/MCP/);
+  assert.match(skill, /assigned[\s\S]*created[\s\S]*prior created and followed[\s\S]*relations[\s\S]*Sprint/);
+  assert.match(skill, /GitHub connector\/MCP[\s\S]*logged-in CLI/);
+  assert.match(skill, /verified associated PR[\s\S]*complete checks\/status/);
+  assert.match(skill, /credentials[\s\S]*config/i);
+  assert.match(skill, /preserve[\s\S]*previous|preserve[\s\S]*existing/i);
 });
 
 test('C02/C12 read-only --list emits the exact publication file list without excluded state', async () => {
@@ -670,7 +678,7 @@ test('C02/C12 read-only --list emits the exact publication file list without exc
   assert.equal(result.status, 0);
   const files = JSON.parse(result.stdout);
   assert.ok(Array.isArray(files));
-  assert.equal(files.length, 34);
+  assert.equal(files.length, 36);
   assert.deepEqual(files, [...files].sort());
   assert.equal(new Set(files).size, files.length);
   for (const file of files) {

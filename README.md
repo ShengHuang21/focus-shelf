@@ -1,82 +1,60 @@
 # Focus Shelf
 
-Upcoming and Backlog group directly by ownership, without To Do/Triage or Sprint subgroups. They show three groups: Assigned to me, Assigned to others, and Unassigned. A created ticket assigned to another person keeps its `Created → <name>` marker on the card; Linear's To Do or Triage status remains visible there. Current work stays grouped by Sprint, then ownership. Upcoming/Backlog and their groups start collapsed; Current work → Sprint → ownership starts expanded. Indentation and guide lines distinguish levels; every family's child tree stays intact. Fold choices are isolated between work-state sections. Sprint metadata remains visible on tickets even where it is not a grouping layer.
+## Architecture
 
-Focus Shelf is a local webpage for a personal issue snapshot, including tickets currently assigned to the profile and tickets the profile created before assigning them to someone else, read-only Linear ticket status, browser-local memos, archive flags and manual PR status. It has no account login or external-service client. Opening, editing or reloading the page reads local files only. Refresh from Linear/GitHub is an explicit authorized Codex workflow.
+```mermaid
+flowchart LR
+  User[User] -->|explicit refresh| Codex[Codex]
 
-The shared application itself owns the canonical Focus Shelf visual frame: neutral gray focus groups, read-only Linear Sprint subgroups, hierarchical ticket families, numbered Linear estimate circles, status and repository badges, PR rows, Memo editing and local Archive actions. Work-state groups appear as `Upcoming`, `Current work`, `Backlog`, then `Completed`; Upcoming contains Linear triage/unstarted work, while Backlog remains the less-committed candidate pool. Current work and its Sprint/ownership subgroups are expanded by default. Within each Sprint (or No Sprint), families are grouped into Assigned to me, Created → Assigned to others, Unassigned, and Following as applicable; root ownership determines placement without splitting child trees. Upcoming, Backlog, Completed, Past Sprint outside Current work, and each family's Child tasks disclosure remain collapsed by default. Click or use the keyboard to expand/collapse them; child tree structure remains intact. Disclosure choices survive Memo/PR edits within the current page; a fresh page uses these defaults. Restoring an archived item reveals its destination group immediately, including opening Upcoming, Completed, child-task and delegated disclosures when needed, without changing its Linear status. Routine system metadata and controls such as snapshot timestamps, item/category counts, a local reload button and a generic top-bar report button are intentionally omitted from the primary view. A compact bottom `Generate Slack Report` action remains available, with an on-demand linked preview and `Copy Report` control. Its `Ready for Review` and `In Progress` sections use labelled Ticket/PR links and nested PR lists. Copy writes matching rich HTML plus a readable plain-text fallback so normal paste into Slack retains formatting when the browser permits it; it never sends a Slack message. Tickets in the same verified Sprint are grouped together inside their work-state section; unscheduled tickets render directly without a full-width `No Sprint` heading, while mixed-family membership remains explicit and parent/child families are never split merely to regroup a child. A parent ticket with verified DRI and Sprint data shows one compact Sprint badge immediately after Second DRI; child tickets do not repeat it. Another owner's nested child work is collapsed by default while retaining its ticket, assignee and Linear status in the summary. Internal assigned/followed/context classifications remain available for report provenance but are not repeated before each visible Assignee. Visible English assignee names use only the first name; the full Linear display name remains in the snapshot and hover detail, while a Japanese/Kanji-only name is preserved. A ticket whose exact Linear status is `On Hold` also mutes its topic thumbnail to gray; other statuses retain their normal topic color. A missing or uncollected estimate has no placeholder. The bundled refresh Skill invokes `generate-focus-shelf-icon` to create a stable, content-specific 2D vector illustration for each parent ticket or topic family. The application owns its larger size, common palette and safe SVG renderer; generated data contains only bounded path geometry, never Emoji or arbitrary SVG markup. Illustrations are derived from the current verified ticket meaning, not hardcoded by ticket ID, and are reused while that meaning is unchanged. Personal data and shortcuts stay outside the repository.
+  subgraph Repo[Focus Shelf repository]
+    Skills[Focus Shelf Skills]
+    Writers[Validated snapshot and catalog writers]
+    DRI[Shared team DRI map]
+    Skills --> Writers
+  end
 
-Work-state placement follows the root ticket's observed Linear state: Done/completed is Completed, Backlog is Backlog, triage/unstarted is Upcoming, and started is Current work. Open or Ready for Review PRs remain visible but never promote Done or Backlog tickets into Current work. Families retain their hierarchy under the root's state; children's own states remain visible. The Slack In Progress report includes only started tickets currently assigned to the profile owner, not creator-only/delegated tickets. Canceled and Duplicate tickets are omitted from the shelf, local Archive list and Slack reports; non-canceled descendants remain visible. Refresh still verifies cancellation and retains source records for completeness. Sprint names such as `26.9.S1` encode year/month/ordinal, not completion. This/Upcoming/Past Sprint is determined from actual Linear start/end dates and the viewer's current time, not a fixed month, assumed S1/S2 midpoint or snapshot timestamp. Missing dates produce a neutral Sprint label. Inside Completed, Sprint groups come first in newest-first order; families without a Sprint are grouped by the root ticket's verified creation month (newest first, using the configured timezone). Every subgroup starts collapsed. Legacy tickets without a creation date stay in Undated, never a guessed month. The application owns this grouping and presentation; the refresh Skill supplies verified Sprint and creation metadata.
+  subgraph Services[External services]
+    Linear[Linear]
+    GitHub[GitHub]
+  end
 
-## Setup
+  subgraph Local[User's computer]
+    Data[(Local data home<br/>profile · snapshot · catalog · Memo · PR status)]
+    Server[Local server<br/>localhost]
+    Page[Focus Shelf page]
+    BrowserData[(Browser-local state<br/>Archive)]
+  end
 
-### Colleague prerequisites
-
-- Node 22+ and a current browser with Web Locks support.
-- The built-in Chrome link-opening helper currently requires macOS with Google Chrome installed. Other host platforms have not been validated for that helper; the repository does not promise cross-platform Chrome launching.
-- The two bundled Skills: `skills/focus-shelf` for collection and refresh, and `skills/generate-focus-shelf-icon` for topic illustrations. No personal `manage-focus-shelf` Skill is required.
-- An authorized Linear MCP/connector in the colleague's Codex setup, with workspace access and complete paginated assigned/created issues, creator identity, children, comments, Sprint and estimate reads. The repository does not install connectors or log in for you.
-- For PR/CI enrichment, an authorized GitHub MCP/connector or authenticated GitHub CLI with access to the relevant repositories and current-head checks. Without this access, PR/CI coverage is explicitly unavailable; it is not treated as zero PRs or passing CI.
-- Provide or verify your GitHub login with Codex before attributing PRs to your profile. A similar-looking username, a linked ticket or a merge actor is not proof of personal PR ownership. Unresolved identity is reported, not guessed.
-- A separate external local data directory and stable browser origin for each profile. Never upload real snapshots, DRI maps or personal browser data to this repository.
-
-The shared validator accepts at most 1,000 final tickets and 5,000 entries per catalog collection. These are safety limits, not permission to truncate a larger collection. A limit or access failure preserves the last complete snapshot.
-
-Use Node 22 or later. There are no dependencies to install. Set `FOCUS_SHELF_HOME` to an absolute directory outside this repository, then run `npm start`. Open `http://localhost:8770` in a current browser with Web Locks support. Keep this fixed origin to preserve browser-local overlays. If port 8770 is occupied, startup fails with `EADDRINUSE`; it never stops another service or switches ports.
-
-```sh
-export FOCUS_SHELF_HOME=/absolute/path/to/your-local-shelf
-npm start
+  Codex --> Skills
+  Linear -->|authorized reads| Skills
+  GitHub -->|authorized PR and CI reads| Skills
+  Writers -->|validated files| Data
+  Data --> Server
+  DRI --> Server
+  Page <-->|local page and API| Server
+  Page --> BrowserData
 ```
 
-A missing config or snapshot produces a safe empty state. Choose one of the following setup paths and keep personal files outside the checkout.
+The page reads local files; it does not connect to Linear or GitHub. Codex refreshes them only when asked. Memo and manual PR selections are saved in `FOCUS_SHELF_HOME/memos.json` and `FOCUS_SHELF_HOME/pr-status.json` on this computer, shared by browsers opening the same local shelf. Archive stays in each browser. An open PR defaults to Open; a non-Draft PR becomes Ready for Review when current-head CI has passed, ignoring skipped checks and treating Release target policy failure as a warning. Manual PR selections remain saved across refreshes: if you choose Merged or Closed but GitHub still says Open, the page reminds you; verified GitHub Merged/Closed takes precedence once it happens. To try another person's shelf, use a different local data folder and port so the first person's files stay untouched.
 
-The common First/Second DRI map is versioned at `config/team-dri.json` and loaded by default for every profile. It contains team workstream assignments only, not profile identity, Linear data, Memo, Archive or credentials. Keep it current through reviewed changes to this file; colleagues receive updates when they pull the repository. `FOCUS_SHELF_TEAM_HOME` is an optional local override for teams that need a separately managed map. Set it to a directory containing `dri.json`; when set, that file takes precedence. Otherwise the bundled map is used, with the profile-local example only as a fallback if the bundled file is absent. An invalid configured map is omitted rather than replaced with stale profile data.
+## Quick Start
 
-For an explicitly requested isolated colleague trial on a computer already running a Shelf, the exported `startServer({home,port})` API can run a separate external home on a separate port. Do not replace the existing profile or stop its server. Keep the trial's returned localhost origin unchanged while using its local overlays.
+**Needs:** Node.js 22+, a current browser, and Codex with the bundled `focus-shelf` and `generate-focus-shelf-icon` Skills. Add authorized Linear access for issue refresh; add GitHub CLI or connector access for PR/CI details.
 
-### Demo home
+1. Clone this repository and open its folder.
+2. Create your local data folder and profile config outside the repository:
 
-For an offline demonstration, use a separate external demo home. Copy the four synthetic examples into it: `examples/config.example.json` as `config.json`, `examples/snapshot.example.json` as `linear-latest.json`, `examples/catalog.example.json` as `catalog.json`, and `examples/dri.example.json` as `dri.json`. Keep their synthetic demo identity unchanged. No external capabilities or real account data are needed for the demo.
+   ```sh
+   mkdir -p "$HOME/.focus-shelf"
+   cp examples/config.example.json "$HOME/.focus-shelf/config.json"
+   ```
 
-### Real home
+   Edit `~/.focus-shelf/config.json`: replace the demo profile, Linear owner and workspace with your own values.
+3. Start the shelf:
 
-For your own workflow, use a different external real home. Create only `config.json`: use the config example as a shape guide and set your own stable profile ID, authorized owner ID and workspace slug. Do not copy the demo snapshot or catalog into this home. Start the page in its empty state, then explicitly ask Codex for the first refresh through the authorized capabilities described below. The first real snapshot is produced from verified account evidence, rather than relabeling demo data.
+   ```sh
+   export FOCUS_SHELF_HOME="$HOME/.focus-shelf"
+   npm start
+   ```
 
-Your `profileId`, `ownerId` and `workspaceSlug` form a stable browser storage namespace. Changing any identity opens a separate overlay store. Missing or changed identity fails closed.
-
-Only one window per profile may write overlays. A second window displays read-only controls; close the writer and select “Try writer lock” to take over and load the latest saved overlays. Without Web Locks the page is read-only. Browser-local storage is tied to this browser and origin; clearing site storage removes those overlays. A storage failure is visibly reported and never acknowledged as saved.
-
-Memo changes save when leaving the text field; Archive and manual PR status save immediately. Ticket status is read-only and comes only from the current Linear snapshot; Focus Shelf has no ticket-status selector. PR keys include repository and number. A local report uses the observed Linear ticket status plus your current memo/archive/manual-PR overlays and never sends anything. The shared starter intentionally does not include the unfinished saved-webpage experiment or any personal shortcut set.
-
-## Manual snapshot refresh
-
-### Daily PR status rule
-
-Focus Shelf deliberately separates a human workflow decision from a GitHub fact. When you finish implementation and want review, set that PR's local dropdown to **Ready for Review** yourself; an open GitHub PR cannot prove that intent. After a PR is actually merged or closed on GitHub, explicitly ask Codex to **update Focus Shelf**. The authorized refresh rereads GitHub and the application gives the observed terminal state (`Merged` or `Closed`) precedence over any older local `Open` or `Ready for Review` selection. The terminal dropdown is then locked until a later GitHub refresh reports a non-terminal state. Do not mark a Linear ticket Done merely because its PR merged; update Linear separately, then refresh Focus Shelf.
-
-The top **Update** button copies a daily incremental English refresh request; **Full refresh** copies a complete reconciliation request. On the first empty shelf, Update copies the full initial collection request. Paste the request into Codex. Daily refresh uses the prior successful snapshot timestamp as its cursor, queries changed/new Linear work with an overlap window, keeps the existing complete set, and refreshes changed issue trees plus known open PRs and their current checks. It also rechecks current Sprint membership for every retained ticket, including tickets that previously had no Sprint, so later Sprint additions/removals are reflected. If complete Sprint membership, the cursor or relationship coverage is uncertain, preserve the prior files and report the gap; use Full refresh when the scope may have drifted. Neither button contacts Linear/GitHub; browser reload only rereads already-published local files. If clipboard access is unavailable, the page reveals selectable fallback text.
-
-Read [CODEX_SNAPSHOT.md](CODEX_SNAPSHOT.md) and the bundled [thin Skill](skills/focus-shelf/SKILL.md). Ask Codex explicitly to refresh through already authorized capabilities. New refreshes use snapshot/catalog v2: complete assigned, created-by-owner and followed seeds and their entire reciprocal child closure are required, including tickets created by the profile and later reassigned, children assigned to others, unassigned children and Done children. Related, blockedBy and external parent tickets do not expand the set. Exhaust pagination; incomplete access or more than 1,000 final tickets preserves the existing snapshot. Assigned/created/followed/context classification remains internal and uses that precedence; a created ticket assigned to another person is shown concisely as `Created → Assigned to <name>`. Legacy snapshots remain readable, with no v2 downgrade. This starter neither connects to external services nor grants that authorization.
-
-Codex needs an already authorized Linear connector/MCP that can read the configured owner's assigned issues, created-by-owner issues with verified `createdById`, prior created and followed issue IDs, changed issues, reciprocal relations, Sprint metadata and estimate points in the configured workspace. The first refresh builds the complete scope. Later daily refreshes use the last published snapshot timestamp as a cursor, query changed/new records with a 24-hour overlap, retain the previous complete set, and merge verified deltas into it. Refresh the complete child closure of affected seeds and verify the current assigned-ID set so newly assigned work is found. Independently recheck current Sprint membership for every retained issue each day, including issues whose prior Sprint was null; detect additions, removals and moves, and refresh authoritative Sprint dates. If the connector cannot provide complete Sprint-membership coverage, do not publish potentially stale Sprint data. A daily delta cannot detect unrelated non-Sprint changes it did not query; use Full refresh for suspected broader drift or periodic reconciliation. An active-only search, incomplete delta query or incomplete affected-tree coverage cannot establish valid publication. Estimate may remain omitted when that optional field was not collected, but must never be guessed. Without the required evidence, preserve the previous files and report the gap.
-
-Optional PR/CI catalog enrichment needs an authorized GitHub connector/MCP or logged-in CLI able to read verified associated PR metadata and complete checks/status for the relevant repositories. Verify the exact issue association, repository, PR number, base branch, state and observed head before describing checks. V2 requires per-ticket association evidence and coverage, and matches CI by repository + PR number + current headSha only when that ticket's CI coverage is complete. DEMO-2 never matches DEMO-20; unavailable PR discovery never means no PR. Keep passed/failed/pending/skipped/neutral/unknown distinct. A check named exactly `Release target policy` is counted separately as `releaseTargetPolicyFailed`: it shows an attention triangle, not the red cross reserved for actual test, build or lint failures. Skipped checks are not failures. If optional GitHub evidence is unavailable, publish unavailable coverage or preserve the previous catalog; do not fabricate entries or treat missing/skipped checks as passed. The catalog writer also refuses to replace a previously published PR set when a repository + PR number silently disappears from a still-present ticket. An individually verified ownership or association correction must explicitly acknowledge that exact removal; incomplete discovery is not a removal reason. A preserved catalog that no longer matches the new snapshot time will be omitted by the page.
-
-Credentials stay in the authorized connector or logged-in CLI session; never write credentials into config, snapshots, catalog, DRI data or browser overlays. Per-profile config contains identity and local presentation preferences only. The repository's `config/team-dri.json` is the common reviewed workstream/First DRI/Second DRI map; do not add emails, employee IDs, personal profile details, ticket data or credentials to it. Catalog ticket presentation may name a matching `workstream`; the page then shows First and Second DRI separately from the Linear assignee. The offline example remains synthetic. The starter installs no connector and does not sign in to services.
-
-```sh
-node scripts/write-codex-snapshot.mjs /absolute/path/to/validated-input.json
-```
-
-The writer uses only `FOCUS_SHELF_HOME/config.json` and publishes only `FOCUS_SHELF_HOME/linear-latest.json`. It locks before reading the latest snapshot, rejects older or divergent same-time input, preserves previously followed IDs (including Done issues), and writes through an atomic temp-file rename. Exact repeats are idempotent. Catalog is optional and is omitted unless its owner/workspace/schema/time match the snapshot. Invalid data is never returned raw. No automatic migration or unfollow operation is included.
-
-## Verification and sharing
-
-Run `npm test` and `node scripts/validate-shareable.mjs`. The publication validator permits only the declared code/docs/synthetic examples/tests; `.git`, `work` and `node_modules` are excluded from publication. Do not share a raw working-directory archive or Git history containing local records. Share only the validator's allowlisted `files` list. Configuration, snapshots, catalog, real DRI maps, browser overlays, credentials, private links and company identifiers must remain local.
-
-Run `node scripts/validate-shareable.mjs --list` to print the exact sorted allowlisted publication files as JSON. Both validation modes are read-only; the command does not create an archive, copy files or publish remotely. Package only that list after validation, leaving excluded local state out.
-
-For a local privacy check, optionally set `FOCUS_SHELF_DENYLIST_FILE` to an absolute external JSON file containing an array of private strings to reject. The validator reads it locally and never includes its bytes or path in the publication list. Keep real identities and company identifiers out of shared code and fixtures; bundled probes use synthetic markers only. Without this optional file, validation checks the file allowlist and generic credential patterns and does not claim personalized identity coverage.
-
-The HTTP server binds localhost and accepts only its canonical `localhost:<actual port>` Host (8770 for normal startup); alternate loopback aliases are rejected to keep browser storage and writer locks on one origin. It rejects unapproved requests, traversal and symlinks and serves an explicit static allowlist. It has no cloud deployment, extension, calendar, Slack, Taskboard, OAuth or background synchronization feature. Remote repository creation, publication and real-data migration are separate actions.
+4. Open [http://localhost:8770](http://localhost:8770). Use **Update** and paste the request into Codex to refresh; reloading the page only rereads local files.
