@@ -1,0 +1,84 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="805" viewBox="0 0 1600 805" role="img" aria-labelledby="title desc">
+  <title id="title">Focus Shelf Current Engineering Architecture</title>
+  <desc id="desc">On request, Codex reads Linear and GitHub through authorized access, uses the repository Skills and validated writers, and saves the snapshot and catalog in a Git-ignored local directory. The Node server reads local files, serves the board, and persists Memo, Archive, and manual PR states to local files. There is no database or Docker.</desc>
+  <defs>
+    <marker id="arrow" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto" markerUnits="strokeWidth">
+      <path d="M0 0 L9 4.5 L0 9 Z" fill="#3f4853"/>
+    </marker>
+  </defs>
+  <style>
+    text { font-family: -apple-system, BlinkMacSystemFont, "Noto Sans CJK SC", "PingFang SC", "Microsoft YaHei", sans-serif; fill: #202630; }
+    .title { font-size: 44px; font-weight: 700; }
+    .section { font-size: 26px; font-weight: 700; fill: #153a73; }
+    .box-title { font-size: 24px; font-weight: 650; }
+    .detail { font-size: 18px; fill: #4a5360; }
+    .small { font-size: 16px; fill: #4a5360; }
+    .label { font-size: 16px; fill: #343d49; }
+    .border { fill: #fff; stroke: #3f4853; stroke-width: 1.8; }
+    .outer { fill: none; stroke: #9aa4af; stroke-width: 1.5; }
+    .line { fill: none; stroke: #3f4853; stroke-width: 1.8; marker-end: url(#arrow); }
+    .divider { stroke: #d4d9df; stroke-width: 1.2; }
+  </style>
+
+  <rect x="0" y="0" width="1600" height="805" fill="#fff"/>
+  <text class="title" x="50" y="76">Focus Shelf | Current Architecture</text>
+
+  <rect class="outer" x="300" y="126" width="1250" height="600"/>
+  <text class="section" x="320" y="165">Local machine: repository and runtime</text>
+  <text class="section" x="320" y="207">On-demand update</text>
+  <text class="small" x="490" y="226" text-anchor="middle">User requests a refresh</text>
+  <path class="line" d="M490 233 V258"/>
+  <line class="divider" x1="318" y1="431" x2="1532" y2="431"/>
+  <text class="section" x="320" y="478">Local viewing and edits</text>
+
+  <rect class="border" x="40" y="260" width="220" height="105"/>
+  <text class="box-title" x="150" y="315" text-anchor="middle">Linear / GitHub</text>
+  <text class="small" x="150" y="343" text-anchor="middle">Authorized external source</text>
+
+  <rect class="border" x="340" y="260" width="300" height="105"/>
+  <text class="box-title" x="490" y="296" text-anchor="middle">Codex + bundled Skills</text>
+  <text class="detail" x="490" y="324" text-anchor="middle">focus-shelf</text>
+  <text class="detail" x="490" y="350" text-anchor="middle">generate-focus-shelf-icon</text>
+
+  <rect class="border" x="725" y="260" width="270" height="105"/>
+  <text class="box-title" x="860" y="304" text-anchor="middle">Validated writers</text>
+  <text class="detail" x="860" y="336" text-anchor="middle">snapshot / catalog</text>
+
+  <path class="line" d="M260 313 H338"/>
+  <text class="label" x="299" y="293" text-anchor="middle">Read</text>
+  <path class="line" d="M640 313 H723"/>
+  <text class="label" x="682" y="293" text-anchor="middle">Data</text>
+
+  <rect class="border" x="705" y="526" width="345" height="177"/>
+  <text class="box-title" x="878" y="560" text-anchor="middle">Local storage</text>
+  <text class="small" x="878" y="587" text-anchor="middle">.focus-shelf/ · Git-ignored</text>
+  <text class="small" x="878" y="623" text-anchor="middle">config.json · linear-latest.json</text>
+  <text class="small" x="878" y="648" text-anchor="middle">catalog.json · memos.json</text>
+  <text class="small" x="878" y="673" text-anchor="middle">archive.json · pr-status.json</text>
+
+  <path class="line" d="M860 365 V524"/>
+  <text class="label" x="875" y="400">Validate, then save</text>
+
+  <rect class="border" x="1130" y="541" width="180" height="132"/>
+  <text class="box-title" x="1220" y="581" text-anchor="middle">Node server</text>
+  <text class="detail" x="1220" y="610" text-anchor="middle">localhost</text>
+  <text class="small" x="1220" y="640" text-anchor="middle">Page + local API</text>
+
+  <rect class="border" x="1360" y="541" width="165" height="132"/>
+  <text class="box-title" x="1442" y="582" text-anchor="middle">Browser</text>
+  <text class="small" x="1442" y="610" text-anchor="middle">Chrome / Codex</text>
+  <text class="small" x="1442" y="639" text-anchor="middle">Board · report</text>
+  <text class="small" x="1442" y="659" text-anchor="middle">Locks · old cache</text>
+
+  <path class="line" d="M1050 574 H1128"/>
+  <text class="label" x="1088" y="563" text-anchor="middle">Read</text>
+  <path class="line" d="M1130 640 H1052"/>
+  <text class="label" x="1090" y="662" text-anchor="middle">Save</text>
+
+  <path class="line" d="M1310 574 H1358"/>
+  <text class="label" x="1334" y="562" text-anchor="middle">GET</text>
+  <path class="line" d="M1360 640 H1312"/>
+  <text class="label" x="1335" y="628" text-anchor="middle">PUT</text>
+
+  <text class="detail" x="50" y="770">No database · No Docker · Page reload reads local files; Update only copies a request</text>
+</svg>

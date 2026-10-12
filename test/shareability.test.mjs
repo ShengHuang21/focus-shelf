@@ -703,15 +703,14 @@ test('C11 production browser code uses local API and no Chrome/external service 
   assert.doesNotMatch(source, /chrome\.|api\.linear\.app|api\.github\.com|sendMessage\s*\(/);
 });
 
-test('C12 concise README shows architecture and Quick Start; thin Skill defines refresh', async () => {
+test('C12 README shows architecture, setup, and request-driven updates', async () => {
   const readme = await readFile(join(root, 'README.md'), 'utf8');
   const skill = await readFile(join(root, 'skills/focus-shelf/SKILL.md'), 'utf8');
-  assert.match(readme, /## Architecture[\s\S]*```mermaid/);
-  assert.match(readme, /## Quick Start/);
-  assert.match(readme, /FOCUS_SHELF_HOME/);
+  assert.match(readme, /## Architecture[\s\S]*docs\/architecture\.svg[\s\S]*## Before you start[\s\S]*## Quick start[\s\S]*## Keeping it current/);
+  assert.match(readme, /skills\/focus-shelf\/SKILL\.md/);
+  assert.match(readme, /Update ELT-536 in my Focus Shelf/);
   assert.match(readme, /npm start/);
-  assert.match(readme, /authorized Linear access/i);
-  assert.match(readme, /archive\.json/i);
+  assert.match(readme, /authorized Linear connector\/MCP access/i);
   assert.match(skill, /FOCUS_SHELF_HOME/);
   assert.match(skill, /localhost:8770/);
   assert.match(skill, /authoriz/i);
@@ -724,7 +723,7 @@ test('C12 bundled Skill specifies connector capabilities and safe refresh requir
   const skill = await readFile(join(root, 'skills/focus-shelf/SKILL.md'), 'utf8');
   assert.match(readme, /Linear/);
   assert.match(readme, /GitHub/);
-  assert.match(readme, /does not connect to Linear or GitHub/);
+  assert.match(readme, /page does not sync with either service on its own/);
   assert.match(skill, /Linear connector\/MCP/);
   assert.match(skill, /assigned[\s\S]*created[\s\S]*prior created and followed[\s\S]*relations[\s\S]*Sprint/);
   assert.match(skill, /GitHub connector\/MCP[\s\S]*logged-in CLI/);
@@ -738,7 +737,7 @@ test('C02/C12 read-only --list emits the exact publication file list without exc
   assert.equal(result.status, 0);
   const files = JSON.parse(result.stdout);
   assert.ok(Array.isArray(files));
-  assert.equal(files.length, 36);
+  assert.equal(files.length, 37);
   assert.deepEqual(files, [...files].sort());
   assert.equal(new Set(files).size, files.length);
   for (const file of files) {
@@ -746,7 +745,7 @@ test('C02/C12 read-only --list emits the exact publication file list without exc
     assert.ok(!['config.json', 'linear-latest.json', 'catalog.json', 'local-only.json'].includes(file));
     await readFile(join(root, file));
   }
-  for (const required of ['README.md', 'CODEX_SNAPSHOT.md', 'web/icons/relation-child.svg', 'lib/archive.mjs', 'lib/shareability.mjs', 'scripts/write-codex-catalog.mjs', 'scripts/validate-shareable.mjs', 'skills/focus-shelf/SKILL.md', 'skills/generate-focus-shelf-icon/SKILL.md', 'test/archive.test.mjs', 'test/snapshot-v2.test.mjs']) assert.ok(files.includes(required));
+  for (const required of ['README.md', 'docs/architecture.svg', 'CODEX_SNAPSHOT.md', 'web/icons/relation-child.svg', 'lib/archive.mjs', 'lib/shareability.mjs', 'scripts/write-codex-catalog.mjs', 'scripts/validate-shareable.mjs', 'skills/focus-shelf/SKILL.md', 'skills/generate-focus-shelf-icon/SKILL.md', 'test/archive.test.mjs', 'test/snapshot-v2.test.mjs']) assert.ok(files.includes(required));
 });
 
 test('C02 shareable publication tree contains no private identifiers or data payloads', async () => {
