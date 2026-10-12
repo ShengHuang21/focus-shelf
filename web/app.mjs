@@ -150,7 +150,7 @@ function renderDri(presentation, maps, sprint = null) {
   return `<div class="ticket-dri"><span class="workstream-badge">${escape(item.workstream)}</span><span class="dri-primary"><strong>First DRI:</strong> ${escape(first)}</span><span class="dri-secondary"><strong>Second DRI:</strong> ${escape(second)}</span>${sprintBadge}</div>`;
 }
 
-function renderPRs(item, catalog, overlays, readOnly, maps) {
+function renderPRs(item, catalog, overlays, readOnly, readOnlyReason, maps) {
   const prs = (catalog?.pullRequests ?? []).filter(pr => pr.issueId === item.id);
   if (!prs.length) return '';
   return `<div class="ticket-prs">${prs.map(pr => {
@@ -163,11 +163,13 @@ function renderPRs(item, catalog, overlays, readOnly, maps) {
     const tone = normalizedLabel === 'QA' ? 'coral' : normalizedLabel === 'INFRA' ? 'gold' : normalizedLabel === 'MONOREPO' || normalizedLabel === 'MONO REPO' ? 'blue' : repository?.tone ?? 'neutral';
     const ci = ciMark(catalog, pr);
     const ciIcon = state === 'ready-review' ? `<span class="ci-mark ci-${ci.tone}" title="${escape(ci.label)}" aria-label="${escape(ci.label)}">${ci.symbol}</span>` : '';
+    const conflict = !terminal && pr.mergeability === 'conflicting' ? '<span class="pr-conflict" title="Merge conflict" role="img" aria-label="Merge conflict">×</span>' : '';
     const reviewBadge = !terminal && changeRequestNeedsAttention(pr, catalog) ? `<span class="pr-review-attention" title="Changes requested after the last full-green CI run">↻ Changes requested</span>` : '';
     const manualWarning = manualPRWarning(pr, overlays);
     const mismatchBadge = manualWarning ? `<span class="pr-manual-warning" title="GitHub state at last check: Open · ${escape(pr.observedAt)}">${escape(manualWarning)}</span>` : '';
     const creator = pr.creator?.isProfileOwner === false ? `<span class="pr-creator" title="GitHub author: ${escape(pr.creator.login)}">Created by ${escape(pr.creator.displayName ?? pr.creator.login)}</span>` : '';
-    return `<div class="ticket-pr-entry"><span class="repo-badge repo-${escape(tone)}">${escape(repoLabel)}</span><span class="branch-badge">${escape(pr.baseBranch)}</span>${link(pr.url, `PR #${pr.number}`, 'pr-link')}${creator}<select class="pr-status pr-status-${escape(state)}" data-pr="${escape(key)}" title="${terminal ? 'Current GitHub terminal state' : 'Set a local status; GitHub state is checked separately on the next Codex refresh'}" ${readOnly || terminal ? 'disabled' : ''}>${statusOptions.map(([value, label]) => `<option value="${value}" ${value === state ? 'selected' : ''}>${label}</option>`).join('')}</select>${mismatchBadge}${reviewBadge}${ciIcon}</div>`;
+    const selectTitle = terminal ? 'Current GitHub terminal state' : readOnly ? `Choose a status to request editing: ${readOnlyReason || 'read-only window'}` : 'Set a local status; GitHub state is checked separately on the next Codex refresh';
+    return `<div class="ticket-pr-entry"><span class="repo-badge repo-${escape(tone)}">${escape(repoLabel)}</span><span class="branch-badge">${escape(pr.baseBranch)}</span>${link(pr.url, `PR #${pr.number}`, 'pr-link')}${creator}<select class="pr-status pr-status-${escape(state)}" data-pr="${escape(key)}" title="${escape(selectTitle)}" ${terminal ? 'disabled' : ''}>${statusOptions.map(([value, label]) => `<option value="${value}" ${value === state ? 'selected' : ''}>${label}</option>`).join('')}</select>${mismatchBadge}${conflict}${reviewBadge}${ciIcon}</div>`;
   }).join('')}</div>`;
 }
 
@@ -180,8 +182,17 @@ function renderReferences(item, byId) {
   }).join('')}</div></details>`;
 }
 
+function renderOutstanding(outstanding) {
+  if (!outstanding) return '';
+  const issueLinks = outstanding.issueItems.map(item => `<button type="button" class="ticket-remaining-link" data-focus-issue="${escape(item.id)}" title="Find ${escape(item.id)} on this shelf">${escape(item.id)} · ${escape(item.status.name)}</button>`).join('');
+  const prLabel = `${outstanding.prs} open ${outstanding.prs === 1 ? 'PR' : 'PRs'}`;
+  if (!outstanding.issueItems.length) return `<div class="ticket-outstanding">Remaining · ${prLabel}</div>`;
+  if (outstanding.issueItems.length === 1) return `<div class="ticket-outstanding">Remaining · ${issueLinks} · ${prLabel}</div>`;
+  return `<details class="ticket-outstanding"><summary>Remaining · ${outstanding.issueItems.length} tickets · ${prLabel}</summary><div class="ticket-remaining-list">${issueLinks}</div></details>`;
+}
+
 function renderIssue(item, context) {
-  const { byId, children, catalog, overlays, readOnly, maps, nested = false } = context;
+  const { byId, children, catalog, overlays, readOnly, readOnlyReason, maps, nested = false } = context;
   const archived = Boolean(overlays.archived?.[item.id]);
   const childItems = activeRoots(children.get(item.id) ?? [], children, overlays);
   const presentation = maps.tickets.get(item.id);
@@ -201,11 +212,15 @@ function renderIssue(item, context) {
   const createdOwnership = category === 'created' && item.assignee?.id
     ? `<span class="ownership-created">Created</span><span class="ownership-arrow">→</span><span class="ownership-assigned"${assigneeTitle}>Assigned to ${escape(formatAssigneeName(item.assignee?.name))}${archived ? ' · archived' : ''}</span>`
     : `<span${item.assignee?.id ? '' : ' class="ownership-unassigned"'}${assigneeTitle}>${escape(assignee)}</span>`;
+  const origin = context.detachedOrigins?.get(item.id);
+  const originPath = origin ? `<div class="ticket-origin">From ${link(origin.root.url, origin.root.id, 'issue-link')}${origin.parent.id !== origin.root.id ? ` <span aria-hidden="true">›</span> ${link(origin.parent.url, origin.parent.id, 'issue-link')}` : ''}</div>` : '';
+  const outstanding = context.outstandingCounts?.get(item.id);
+  const outstandingLabel = renderOutstanding(outstanding);
   const ownership = hasDri && item.assignee?.id
     ? ''
     : `<div class="ticket-ownership">${createdOwnership}${item.sprint ? `<span>· Sprint: ${escape(item.sprint.name)}</span>` : ''}</div>`;
   const revealChild = context.revealIssueId && childItems.some(child => familyHasIssue(child, context.revealIssueId, children, overlays));
-  const body = `${ownership}${renderDri(presentation, maps, parentSprint)}<div class="ticket-heading">${presentation ? `<div class="ticket-thumbnail ticket-thumbnail-${escape(thumbnailTone)}${thumbnailState}" role="img" aria-label="${escape(`${presentation.label} · ${presentation.description}`)}" title="${escape(presentation.description)}"><span class="ticket-thumbnail-icon">${renderTicketIcon(icon)}</span><span>${escape(presentation.label)}</span></div>` : ''}<div class="ticket-main"><div class="ticket-row">${link(item.url, item.id, 'issue-link')}${estimate}<span class="status-mark status-${statusTone(item.status.type, item.status.name)}" title="Observed Linear status: ${escape(item.status.name)}"></span><button class="archive-action" data-archive="${escape(item.id)}" ${readOnly ? 'disabled' : ''}>${archived ? 'Restore' : 'Archive'}</button></div><h3>${escape(item.title)}</h3></div></div><div class="memo-row"><span class="status-pill status-${statusTone(item.status.type, item.status.name)}" title="Read-only Linear status">${escape(item.status.name)}</span><span class="memo-label">Memo</span><textarea rows="1" data-memo="${escape(item.id)}" placeholder="None" ${readOnly ? 'disabled' : ''}>${escape(memo)}</textarea></div>${renderPRs(item, catalog, overlays, readOnly, maps)}${renderReferences(item, byId)}`;
+  const body = `${originPath}${ownership}${renderDri(presentation, maps, parentSprint)}<div class="ticket-heading">${presentation ? `<div class="ticket-thumbnail ticket-thumbnail-${escape(thumbnailTone)}${thumbnailState}" role="img" aria-label="${escape(`${presentation.label} · ${presentation.description}`)}" title="${escape(presentation.description)}"><span class="ticket-thumbnail-icon">${renderTicketIcon(icon)}</span><span>${escape(presentation.label)}</span></div>` : ''}<div class="ticket-main"><div class="ticket-row">${link(item.url, item.id, 'issue-link')}${estimate}<span class="status-mark status-${statusTone(item.status.type, item.status.name)}" title="Observed Linear status: ${escape(item.status.name)}"></span><button class="archive-action" data-archive="${escape(item.id)}" title="${readOnly ? escape(`Click to request editing: ${readOnlyReason || 'read-only window'}`) : 'Keep this ticket in the local Archive'}">${archived ? 'Restore' : 'Archive'}</button></div><h3>${escape(item.title)}</h3></div></div>${outstandingLabel}<div class="memo-row"><span class="status-pill status-${statusTone(item.status.type, item.status.name)}" title="Read-only Linear status">${escape(item.status.name)}</span><span class="memo-label">Memo</span><textarea rows="1" data-memo="${escape(item.id)}" placeholder="None" ${readOnly ? 'disabled' : ''}>${escape(memo)}</textarea></div>${renderPRs(item, catalog, overlays, readOnly, readOnlyReason, maps)}${renderReferences(item, byId)}`;
   const card = !childItems.length
     ? `<article class="ticket-card${nested ? ' ticket-child' : ''}">${body}</article>`
     : `<article class="ticket-card ticket-family${nested ? ' ticket-child' : ''}">${body}<details class="child-task-fold" data-fold="children:${escape(item.id)}"${revealChild ? ' open' : ''}><summary class="handled-by"><span class="relationship-symbol relationship-symbol-child">Child</span><span>· ${childItems.length} ${childItems.length === 1 ? 'task' : 'tasks'}</span><span class="fold-chevron" aria-hidden="true"></span></summary><div class="ticket-children">${childItems.map(child => renderIssue(child, { ...context, nested: true })).join('')}</div></details></article>`;
@@ -223,14 +238,19 @@ function familyHasIssue(item, issueId, children, overlays) {
   return activeRoots(children.get(item.id) ?? [], children, overlays).some(child => familyHasIssue(child, issueId, children, overlays));
 }
 
-function familyHasOpenPR(item, children, openPRIssueIds) {
-  if (openPRIssueIds.has(item.id)) return true;
-  return (children.get(item.id) ?? []).some(child => familyHasOpenPR(child, children, openPRIssueIds));
+function familyNeedsWork(item, children, openPRIssueIds, overlays) {
+  return (!overlays.archived?.[item.id] && item.status.type !== 'completed')
+    || openPRIssueIds.has(item.id)
+    || (children.get(item.id) ?? []).some(child => familyNeedsWork(child, children, openPRIssueIds, overlays));
 }
 
-// Keep the Linear status visible, but leave a Done family in Current work while any associated PR remains open.
-const familyGroupType = (item, children, openPRIssueIds) => item.status.type === 'completed'
-  && familyHasOpenPR(item, children, openPRIssueIds) ? 'started' : item.status.type;
+function allDescendants(item, children) {
+  return (children.get(item.id) ?? []).flatMap(child => [child, ...allDescendants(child, children)]);
+}
+
+// A Done root stays visible in Current work until its descendants and PRs are complete.
+const familyGroupType = (item, children, openPRIssueIds, overlays) => item.status.type === 'completed'
+  && familyNeedsWork(item, children, openPRIssueIds, overlays) ? 'started' : item.status.type;
 
 function familySprintGroup(item, children, overlays, observedAt) {
   function visibleFamily(current) {
@@ -261,7 +281,7 @@ function renderGroupedItems(items, context, sprintKey) {
   if (!['current', 'backlog', 'planned'].includes(context.workGroup)) return items.map(item => renderIssue(item, context)).join('');
   const ownership = [
     { key: 'mine', label: 'Assigned to me', matches: item => context.categories.get(item.id) === 'assigned' },
-    { key: 'delegated', label: context.workGroup === 'planned' ? 'Assigned to others' : 'Created → Assigned to others', matches: item => context.workGroup === 'planned' ? item.assignee !== null && context.categories.get(item.id) !== 'assigned' : context.categories.get(item.id) === 'created' && item.assignee !== null },
+    { key: 'delegated', label: context.workGroup === 'planned' || context.workGroup === 'current' ? 'Assigned to others' : 'Created → Assigned to others', matches: item => context.workGroup === 'planned' || context.workGroup === 'current' ? item.assignee !== null && context.categories.get(item.id) !== 'assigned' : context.categories.get(item.id) === 'created' && item.assignee !== null },
     { key: 'unassigned', label: 'Unassigned', matches: item => item.assignee === null },
     { key: 'following', label: 'Following', matches: () => true },
   ];
@@ -333,23 +353,50 @@ export function renderShelf({ config, snapshot, catalog, dri, overlays = {}, rea
   const maps = presentationMaps(catalog, dri);
   maps.snapshotVersion = snapshot?.schemaVersion;
   maps.categories = categories;
-  const openPRIssueIds = new Set((catalog?.pullRequests ?? []).filter(pr => pr.state === 'open').map(pr => pr.issueId));
+  const openPRsByIssue = new Map();
+  for (const pr of catalog?.pullRequests ?? []) {
+    if (pr.state !== 'open') continue;
+    openPRsByIssue.set(pr.issueId, (openPRsByIssue.get(pr.issueId) ?? 0) + 1);
+  }
+  const openPRIssueIds = new Set(openPRsByIssue.keys());
   const archivedItems = issues.filter(item => overlays.archived?.[item.id]);
   const archivedCount = archivedItems.length;
-  const visibleRoots = activeRoots(roots, children, overlays);
+  const detachedOrigins = new Map();
+  const outstandingCounts = new Map();
+  for (const root of roots) {
+    if (overlays.archived?.[root.id] || root.status.type !== 'completed' || !familyNeedsWork(root, children, openPRIssueIds, overlays)) continue;
+    const descendants = allDescendants(root, children);
+    outstandingCounts.set(root.id, {
+      issueItems: descendants.filter(item => !overlays.archived?.[item.id] && item.status.type !== 'completed'),
+      prs: [root, ...descendants].reduce((total, item) => total + (openPRsByIssue.get(item.id) ?? 0), 0),
+    });
+    function detachOutstanding(parent) {
+      for (const child of children.get(parent.id) ?? []) {
+        if (overlays.archived?.[child.id]) continue;
+        const detach = child.assignee === null && child.status.type !== 'completed';
+        if (detach) detachedOrigins.set(child.id, { root, parent });
+        detachOutstanding(child);
+      }
+    }
+    detachOutstanding(root);
+  }
+  const displayChildren = new Map([...children].map(([id, items]) => [id, items.filter(item => !detachedOrigins.has(item.id))]));
+  const visibleRoots = [...activeRoots(roots, displayChildren, overlays), ...issues.filter(item => detachedOrigins.has(item.id))];
   const pins = (config?.pins ?? []).map(pin => link(pin.url, pin.title, 'pin-link')).join('');
   const renderedGroups = groups.map(group => {
-    const items = visibleRoots.filter(item => group.types.has(familyGroupType(item, children, openPRIssueIds)));
+    const items = visibleRoots.filter(item => detachedOrigins.has(item.id)
+      ? group.key === 'current'
+      : group.types.has(familyGroupType(item, children, openPRIssueIds, overlays)));
     if (!items.length) return '';
-    const context = { byId, children, catalog, overlays, readOnly, maps, categories, snapshotGeneratedAt: now, revealIssueId, workGroup: group.key, timezone: config?.timezone ?? 'UTC' };
+    const context = { byId, children: displayChildren, catalog, overlays, readOnly, readOnlyReason, maps, categories, detachedOrigins, outstandingCounts, snapshotGeneratedAt: now, revealIssueId, workGroup: group.key, timezone: config?.timezone ?? 'UTC' };
     const reveal = group.key === 'current' || revealIssueId && items.some(item => familyHasIssue(item, revealIssueId, children, overlays));
     return `<details class="focus-group focus-group-${group.key}" data-fold="group:${group.key}"${reveal ? ' open' : ''}><summary><span>${group.symbol}</span>${group.label}</summary><div class="sprint-groups">${renderSprintGroups(items, context)}</div></details>`;
   }).join('');
   const empty = '<section class="empty"><h2>Your shelf is ready</h2><p>No issues yet. Configure your local profile and explicitly ask Codex to refresh a snapshot.</p></section>';
-  const archive = `<details id="archive-section" class="archive-section"><summary>Archive · ${archivedCount}</summary><p>Only manually archived tickets appear here.</p><div class="archive-list">${archivedItems.map(item => renderIssue(item, { byId, children: new Map(), catalog, overlays, readOnly, maps, categories })).join('')}</div></details>`;
+  const archive = `<details id="archive-section" class="archive-section"><summary>Archive · ${archivedCount}</summary><p>Only manually archived tickets appear here.</p><div class="archive-list">${archivedItems.map(item => renderIssue(item, { byId, children: new Map(), catalog, overlays, readOnly, readOnlyReason, maps, categories })).join('')}</div></details>`;
   const navigation = pins ? `<nav>${pins}</nav>` : '';
   const writerNotice = readOnly
-    ? '<div class="writer-notice"><span>Read-only</span><button id="takeover">Use this window</button></div>'
+    ? `<div class="writer-notice"><span>Read-only · ${escape(readOnlyReason || 'Editing unavailable')}</span><button id="takeover">Use this window</button></div>`
     : '<div class="local-status" hidden aria-live="polite"></div>';
   const updateControl = '<header class="shelf-toolbar"><button id="request-focus-update" class="update-action" type="button" aria-describedby="focus-update-status" title="Copy a daily incremental Focus Shelf refresh request for Codex"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M20 7v5h-5M4 17v-5h5M6.1 8A7 7 0 0 1 18 6l2 1M17.9 16A7 7 0 0 1 6 18l-2-1"/></svg><span>Update</span></button><button id="request-focus-full-update" class="update-full-action" type="button" aria-describedby="focus-update-status" title="Copy a complete Focus Shelf reconciliation request for Codex">Full refresh</button><span id="focus-update-status" class="update-status" aria-live="polite"></span><textarea id="focus-update-fallback" readonly hidden aria-label="Focus Shelf update request"></textarea></header>';
   const slackReport = '<section class="slack-report"><button id="generate-slack-report">Generate Slack Report</button><div id="slack-report-panel" hidden><div id="slack-report-preview" class="slack-report-preview"></div><textarea id="slack-report-text" readonly hidden></textarea><div class="slack-report-actions"><button id="copy-slack-report">Copy Report</button><span id="slack-report-status" aria-live="polite"></span></div></div></section>';
@@ -450,6 +497,11 @@ if (typeof document !== 'undefined') {
     });
     const errors = () => { const node = main.querySelector('.local-status') ?? main.querySelector('.writer-notice'); node.hidden = false; node.textContent = `Save failed · ${client.readOnlyReason || 'Local storage or input unavailable'}`; node.classList.add('error'); };
     const action = (fn, reveal = null) => { try { fn(); render(reveal); if (reveal) main.querySelector(`[data-archive="${CSS.escape(reveal)}"]`)?.scrollIntoView({ block: 'center' }); } catch { errors(); } };
+    main.querySelectorAll('[data-focus-issue]').forEach(node => { node.onclick = () => {
+      const id = node.dataset.focusIssue;
+      render(id);
+      main.querySelector(`[data-memo="${CSS.escape(id)}"]`)?.closest('.ticket-card')?.scrollIntoView({ block: 'center' });
+    }; });
     main.querySelector('#takeover')?.addEventListener('click', async () => { await client.acquireWriter(); render(); });
     const copyUpdatePrompt = async request => {
       const status = main.querySelector('#focus-update-status');
@@ -467,7 +519,7 @@ if (typeof document !== 'undefined') {
     };
     main.querySelector('#request-focus-update').onclick = () => copyUpdatePrompt(
       shelf.snapshot
-        ? "Please update my Focus Shelf incrementally using this repository's bundled focus-shelf Skill and CODEX_SNAPSHOT.md. Recheck all known open PRs, including review chronology and current-head CI. Preserve manual PR choices and local data; save updated files on this computer only after validation. Remind me if a manual Merged or Closed choice is still Open on GitHub."
+        ? "Please update my Focus Shelf incrementally using this repository's bundled focus-shelf Skill and CODEX_SNAPSHOT.md. Recheck all known open PRs, including mergeability, review chronology and current-head CI. Preserve manual PR choices and local data; save updated files on this computer only after validation. Remind me if a manual Merged or Closed choice is still Open on GitHub."
         : createUpdateRequest(),
     );
     main.querySelector('#request-focus-full-update').onclick = () => copyUpdatePrompt(createUpdateRequest());
@@ -488,22 +540,54 @@ if (typeof document !== 'undefined') {
         status.hidden = false; status.textContent = error.message || 'Memo was not saved'; status.classList.add('error');
       }
     }; });
-    main.querySelectorAll('[data-archive]').forEach(node => { node.onclick = () => {
+    main.querySelectorAll('[data-archive]').forEach(node => { node.onclick = async () => {
       const id = node.dataset.archive;
+      if (client.readOnly) {
+        try { await client.acquireWriter(); } catch { /* Keep the shelf read-only and show its reason below. */ }
+        if (client.readOnly) {
+          const nextStep = client.readOnlyReason === 'Another window is the writer'
+            ? 'Close the other shelf window, then try again.'
+            : 'Editing is unavailable in this window.';
+          const message = `Archive unavailable · ${client.readOnlyReason || 'Read-only'}. ${nextStep}`;
+          const notice = main.querySelector('.writer-notice');
+          if (notice) {
+            notice.querySelector('span').textContent = message;
+          }
+          const feedback = document.createElement('span');
+          feedback.className = 'archive-feedback';
+          feedback.role = 'alert';
+          feedback.textContent = message;
+          node.nextElementSibling?.classList.contains('archive-feedback') && node.nextElementSibling.remove();
+          node.insertAdjacentElement('afterend', feedback);
+          return;
+        }
+      }
       const restoring = client.isArchived(id);
       action(() => client.setArchived(id, !restoring), restoring ? id : null);
     }; });
     main.querySelectorAll('[data-pr]').forEach(node => { node.onchange = async () => {
-      if (client.readOnly) return errors();
+      const key = node.dataset.pr;
+      const selectedStatus = node.value;
+      const showError = message => {
+        render();
+        const select = main.querySelector(`[data-pr="${CSS.escape(key)}"]`);
+        const feedback = document.createElement('span');
+        feedback.className = 'pr-edit-feedback';
+        feedback.role = 'alert';
+        feedback.textContent = message;
+        select?.insertAdjacentElement('afterend', feedback);
+      };
+      if (client.readOnly) {
+        try { await client.acquireWriter(); } catch { /* Keep the shelf read-only and explain below. */ }
+        if (client.readOnly) return showError(`Not saved · ${client.readOnlyReason || 'Read-only window'}`);
+      }
       try {
-        const response = await fetch('/api/pr-status', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key: node.dataset.pr, status: node.value, expectedRevision: prStatusState.revision }) });
+        const response = await fetch('/api/pr-status', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key, status: selectedStatus, expectedRevision: prStatusState.revision }) });
         if (!response.ok) throw new Error(response.status === 409 ? 'PR status changed in another window. Reload before saving.' : 'PR status was not saved.');
         prStatusState = await response.json();
         render();
       } catch (error) {
-        render();
-        const status = main.querySelector('.local-status') ?? main.querySelector('.writer-notice');
-        status.hidden = false; status.textContent = error.message || 'PR status was not saved'; status.classList.add('error');
+        showError(error.message || 'PR status was not saved');
       }
     }; });
     main.querySelectorAll('[data-open-in-chrome]').forEach(node => { node.onclick = async event => {
