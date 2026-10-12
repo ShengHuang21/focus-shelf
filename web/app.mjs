@@ -146,32 +146,11 @@ function ciMark(catalog, pr) {
   return { symbol: '△', tone: 'attention', label: 'No passing check evidence' };
 }
 
-function presentationMaps(catalog, dri) {
+function presentationMaps(catalog) {
   return {
     repositories: new Map((catalog?.presentation?.repositories ?? []).map(item => [item.repository, item])),
     tickets: new Map((catalog?.presentation?.tickets ?? []).map(item => [item.issueId, item])),
-    workstreams: new Map((dri?.workstreams ?? []).filter(item => item.workstream).map(item => [item.workstream, item])),
   };
-}
-
-export function formatDriName(value) {
-  const name = String(value ?? '').trim();
-  if (!name) return 'Unassigned';
-  const beforeDash = name.split(/\s*-\s*/)[0].trim();
-  if (/^\p{Script=Han}/u.test(name)) return beforeDash;
-  const english = name.split(/\s*-\s*/).find(part => /^[A-Za-z]/.test(part.trim()))?.trim() ?? name;
-  return english.match(/[A-Za-z]+/)?.[0] ?? english.split(/\s+/)[0];
-}
-
-function renderDri(presentation, maps, sprint = null) {
-  const item = presentation?.workstream ? maps.workstreams.get(presentation.workstream) : null;
-  if (!item) return '';
-  const first = formatDriName(item.firstDri);
-  const second = formatDriName(item.secondDri);
-  const sprintBadge = sprint
-    ? `<span class="sprint-badge" title="Observed Linear Sprint: ${escape(sprint.name)}">${escape(sprint.name)}</span>`
-    : '';
-  return `<div class="ticket-dri"><span class="workstream-badge">${escape(item.workstream)}</span><span class="dri-primary"><strong>First DRI:</strong> ${escape(first)}</span><span class="dri-secondary"><strong>Second DRI:</strong> ${escape(second)}</span>${sprintBadge}</div>`;
 }
 
 function renderPRs(item, catalog, overlays, readOnly, readOnlyReason, maps) {
@@ -231,7 +210,6 @@ function renderIssue(item, context) {
   const archivedChildCount = context.archiveView ? 0 : directChildren.filter(child => overlays.archived?.[child.id]).length;
   const childItems = context.archiveView ? directChildren : activeRoots(directChildren, children, overlays);
   const presentation = maps.tickets.get(item.id);
-  const hasDri = Boolean(presentation?.workstream && maps.workstreams.get(presentation.workstream));
   const icon = presentation?.icon ?? 'ticket';
   const thumbnailTone = presentation?.tone === 'neutral' ? 'blue' : presentation?.tone;
   const thumbnailState = String(item.status.name).trim().toUpperCase() === 'ON HOLD' ? ' ticket-thumbnail-on-hold' : '';
@@ -243,7 +221,6 @@ function renderIssue(item, context) {
   const assignee = `${issueAssignee(item)}${archived ? ' · archived' : ''}`;
   const assigneeTitle = item.assignee?.name ? ` title="${escape(`Full Linear assignee: ${item.assignee.name}`)}"` : '';
   const delegated = nested && category === 'context' && Boolean(item.assignee?.id);
-  const parentSprint = hasDri && childItems.length > 0 ? item.sprint : null;
   const createdOwnership = category === 'created' && item.assignee?.id
     ? `<span class="ownership-created">Created</span><span class="ownership-arrow">→</span><span class="ownership-assigned"${assigneeTitle}>Assigned to ${escape(formatAssigneeName(item.assignee?.name))}${archived ? ' · archived' : ''}</span>`
     : `<span${item.assignee?.id ? '' : ' class="ownership-unassigned"'}${assigneeTitle}>${escape(assignee)}</span>`;
@@ -251,12 +228,10 @@ function renderIssue(item, context) {
   const originPath = origin ? `<div class="ticket-origin">From ${link(origin.root.url, origin.root.id, 'issue-link')}${origin.parent.id !== origin.root.id ? ` <span aria-hidden="true">›</span> ${link(origin.parent.url, origin.parent.id, 'issue-link')}` : ''}</div>` : '';
   const outstanding = context.outstandingCounts?.get(item.id);
   const outstandingLabel = context.archiveView && !nested ? renderArchiveProgress(item, children) : renderOutstanding(outstanding);
-  const ownership = hasDri && item.assignee?.id
-    ? ''
-    : `<div class="ticket-ownership">${createdOwnership}${item.sprint ? `<span>· Sprint: ${escape(item.sprint.name)}</span>` : ''}</div>`;
+  const ownership = `<div class="ticket-ownership">${createdOwnership}${item.sprint ? `<span>· Sprint: ${escape(item.sprint.name)}</span>` : ''}</div>`;
   const revealChild = context.archiveView || context.revealIssueId && childItems.some(child => familyHasIssue(child, context.revealIssueId, children, overlays));
   const archiveAction = context.archiveView && nested ? '' : `<button class="archive-action" data-archive="${escape(item.id)}" title="${readOnly ? escape(`Click to request editing: ${readOnlyReason || 'read-only window'}`) : 'Keep this ticket in the local Archive'}">${archived ? 'Restore' : 'Archive'}</button>`;
-  const body = `${originPath}${ownership}${renderDri(presentation, maps, parentSprint)}<div class="ticket-heading">${presentation ? `<div class="ticket-thumbnail ticket-thumbnail-${escape(thumbnailTone)}${thumbnailState}" role="img" aria-label="${escape(`${presentation.label} · ${presentation.description}`)}" title="${escape(presentation.description)}"><span class="ticket-thumbnail-icon">${renderTicketIcon(icon)}</span><span>${escape(presentation.label)}</span></div>` : ''}<div class="ticket-main"><div class="ticket-row">${link(item.url, item.id, 'issue-link')}${estimate}<span class="status-mark status-${statusTone(item.status.type, item.status.name)}" title="Observed Linear status: ${escape(item.status.name)}"></span>${archiveAction}</div><h3>${escape(item.title)}</h3></div></div>${outstandingLabel}<div class="memo-row"><span class="status-pill status-${statusTone(item.status.type, item.status.name)}" title="Read-only Linear status">${escape(item.status.name)}</span><span class="memo-label">Memo</span><textarea rows="1" data-memo="${escape(item.id)}" placeholder="None" ${readOnly ? 'disabled' : ''}>${escape(memo)}</textarea></div>${renderPRs(item, catalog, overlays, readOnly, readOnlyReason, maps)}${renderReferences(item, byId)}`;
+  const body = `${originPath}${ownership}<div class="ticket-heading">${presentation ? `<div class="ticket-thumbnail ticket-thumbnail-${escape(thumbnailTone)}${thumbnailState}" role="img" aria-label="${escape(`${presentation.label} · ${presentation.description}`)}" title="${escape(presentation.description)}"><span class="ticket-thumbnail-icon">${renderTicketIcon(icon)}</span><span>${escape(presentation.label)}</span></div>` : ''}<div class="ticket-main"><div class="ticket-row">${link(item.url, item.id, 'issue-link')}${estimate}<span class="status-mark status-${statusTone(item.status.type, item.status.name)}" title="Observed Linear status: ${escape(item.status.name)}"></span>${archiveAction}</div><h3>${escape(item.title)}</h3></div></div>${outstandingLabel}<div class="memo-row"><span class="status-pill status-${statusTone(item.status.type, item.status.name)}" title="Read-only Linear status">${escape(item.status.name)}</span><span class="memo-label">Memo</span><textarea rows="1" data-memo="${escape(item.id)}" placeholder="None" ${readOnly ? 'disabled' : ''}>${escape(memo)}</textarea></div>${renderPRs(item, catalog, overlays, readOnly, readOnlyReason, maps)}${renderReferences(item, byId)}`;
   const childCountLabel = `${childItems.length} ${childItems.length === 1 ? 'task' : 'tasks'}${archivedChildCount ? ` · ${archivedChildCount} archived` : ''}`;
   const card = !childItems.length && !archivedChildCount
     ? `<article class="ticket-card${nested ? ' ticket-child' : ''}">${body}</article>`
@@ -398,7 +373,7 @@ export function createButtonUpdateRequest(snapshot) {
   return createDailyUpdateRequest(snapshot.generatedAt);
 }
 
-export function renderShelf({ config, snapshot, catalog, dri, overlays = {}, readOnly = true, readOnlyReason = '', saveState = 'idle', revealIssueId = null, now = new Date().toISOString() }) {
+export function renderShelf({ config, snapshot, catalog, overlays = {}, readOnly = true, readOnlyReason = '', saveState = 'idle', revealIssueId = null, now = new Date().toISOString() }) {
   const issues = visibleIssues(snapshot);
   const byId = new Map(issues.map(item => [item.id, item]));
   const categories = new Map(issues.map(item => [item.id, issueCategory(item, snapshot)]));
@@ -411,7 +386,7 @@ export function renderShelf({ config, snapshot, catalog, dri, overlays = {}, rea
     children.set(parent.issueId, [...(children.get(parent.issueId) ?? []), item]);
   }
   const roots = issues.filter(item => !childIds.has(item.id));
-  const maps = presentationMaps(catalog, dri);
+  const maps = presentationMaps(catalog);
   maps.snapshotVersion = snapshot?.schemaVersion;
   maps.categories = categories;
   const openPRsByIssue = new Map();

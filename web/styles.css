@@ -90,11 +90,6 @@ nav { display: flex; flex-wrap: wrap; gap: 8px; min-width: 0; }
 .ownership-unassigned { padding: 1px 6px; border: 1px solid #efb3ad; border-radius: 999px; color: #a12b24; background: #fff1f0; font-weight: 750; }
 .ownership-arrow { color: #8e96a6; font-weight: 800; }
 .ownership-assigned { color: #656b78; }
-.ticket-dri { display: flex; flex-wrap: nowrap; align-items: center; gap: 4px 9px; margin: 0 0 7px; overflow-x: auto; color: #515564; font-size: .69rem; white-space: nowrap; }
-.workstream-badge { padding: 2px 7px; border-radius: 5px; color: var(--blue); background: var(--blue-bg); font-weight: 750; }
-.dri-secondary { color: #9296a1; }
-.dri-secondary strong { color: #7f8490; font-weight: 650; }
-.sprint-badge { padding: 2px 7px; border: 1px solid #c9b8ea; border-radius: 999px; color: var(--purple); background: #f7f3ff; font-weight: 700; }
 .ticket-heading { display: flex; align-items: center; gap: 10px; min-width: 0; }
 .ticket-thumbnail { flex: 0 0 110px; min-height: 84px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; padding: 7px 5px; border: 1px solid #d8dfed; border-radius: 8px; color: #354d91; background: #eef4ff; text-align: center; font-size: .68rem; font-weight: 750; }
 .ticket-thumbnail-neutral { color: #515564; background: #f3f4f6; }

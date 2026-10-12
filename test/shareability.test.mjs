@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFile, readdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
-import { renderShelf, createReport, createReportHtml, createUpdateRequest, createDailyUpdateRequest, createButtonUpdateRequest, createMemoDrafts, formatAssigneeName, formatDriName, renderTicketIcon, displayedPRState, completedArchiveIds } from '../web/app.mjs';
+import { renderShelf, createReport, createReportHtml, createUpdateRequest, createDailyUpdateRequest, createButtonUpdateRequest, createMemoDrafts, formatAssigneeName, renderTicketIcon, displayedPRState, completedArchiveIds } from '../web/app.mjs';
 import { config, snapshot, catalog, dri, snapshotV2, catalogV2 } from './helpers.mjs';
 
 const root = new URL('..', import.meta.url).pathname;
@@ -226,24 +226,17 @@ test('C11 rendering treats supplied titles and memo as text; report remains loca
   assert.match(report, /DEMO-1/);
 });
 
-test('C11 verified workstream displays First and Second DRI separately from assignee', () => {
+test('C11 verified workstream does not replace the ticket assignee with team DRI', () => {
   const state = {
     config, snapshot, dri,
     catalog: { ...catalog, presentation: { ...catalog.presentation, tickets: [{ issueId: 'DEMO-1', label: 'Demo', icon: 'ticket', tone: 'blue', description: 'Synthetic', workstream: 'Synthetic Workstream' }] } },
   };
   const html = renderShelf(state);
-  assert.match(html, /class="dri-primary"><strong>First DRI:<\/strong> First/);
-  assert.match(html, /class="dri-secondary"><strong>Second DRI:<\/strong> Second/);
-  assert.doesNotMatch(html, /Assignee: Demo User/);
+  assert.match(html, /class="ticket-ownership"><span[^>]*>Assignee: Demo<\/span><\/div>/);
+  assert.doesNotMatch(html, /First DRI|Second DRI|ticket-dri/);
   const report = createReport(state);
   assert.match(report, /In Progress\n• DEMO-1 — Synthetic example/);
   assert.doesNotMatch(report, /First DRI|Second DRI|Assignee/);
-});
-
-test('C11 Second DRI is visually quieter than the primary owner', async () => {
-  const css = await readFile(join(root, 'web/styles.css'), 'utf8');
-  assert.match(css, /\.dri-secondary\s*\{[^}]*color:\s*#9296a1/s);
-  assert.match(css, /\.dri-secondary strong\s*\{[^}]*color:\s*#7f8490/s);
 });
 
 test('C11 assignee display prefers the English name and omits the Japanese duplicate', () => {
@@ -251,14 +244,6 @@ test('C11 assignee display prefers the English name and omits the Japanese dupli
   assert.equal(formatAssigneeName('例野 太郎 - Casey Example -'), 'Casey');
   assert.equal(formatAssigneeName('Morgan Example Long Synthetic Name'), 'Morgan');
   assert.equal(formatAssigneeName('例野 太郎'), '例野 太郎');
-});
-
-test('C11 DRI display names keep only the first English name or the leading Kanji name', () => {
-  assert.equal(formatDriName('Taylor Example (例(れい))'), 'Taylor');
-  assert.equal(formatDriName('ジェイミー エグザンプル- Jamie Example -'), 'Jamie');
-  assert.equal(formatDriName('ロビン - Robin'), 'Robin');
-  assert.equal(formatDriName('例野 花子- Avery Example -'), '例野 花子');
-  assert.equal(formatDriName(null), 'Unassigned');
 });
 
 test('C11 shared UI uses the canonical Focus Shelf hierarchy and compact visual frame', () => {
@@ -419,12 +404,12 @@ test('C11 a created unassigned ticket has only the Unassigned ownership label', 
   assert.doesNotMatch(html, /ownership-created|ownership-arrow|Assigned to Unassigned/);
 });
 
-test('Unassigned uses a shared red badge even with DRI context', async () => {
+test('Unassigned uses a shared red badge even with workstream metadata', async () => {
   const value = { ...snapshot, issues: [{ ...snapshot.issues[0], assignee: null }] };
   const presentation = { ...catalog.presentation, tickets: [{ issueId: 'DEMO-1', label: 'Demo', icon: 'ticket', tone: 'blue', description: 'Synthetic', workstream: 'Synthetic Workstream' }] };
   const html = renderShelf({ config, snapshot: value, catalog: { ...catalog, presentation }, dri });
   assert.match(html, /class="ownership-unassigned">Unassigned<\/span>/);
-  assert.match(html, /First DRI:/);
+  assert.doesNotMatch(html, /First DRI|Second DRI|ticket-dri/);
   const css = await readFile(join(root, 'web/styles.css'), 'utf8');
   assert.match(css, /\.ownership-unassigned\s*\{[^}]*color:\s*#a12b24;[^}]*background:\s*#fff1f0/s);
 });
@@ -531,14 +516,14 @@ test('C11 Current work groups complete ticket families by observed Linear Sprint
   assert.doesNotMatch(html, /<h3>No Sprint<\/h3>/);
 });
 
-test('C11 parent DRI row shows one compact Sprint badge after Second DRI', () => {
+test('C11 parent Sprint and assignee remain visible with workstream metadata', () => {
   const sprint = { name: 'Sprint 26.10.S1', startDate: '2026-10-01T00:00:00.000Z', endDate: '2026-10-20T23:59:59.000Z' };
   const parent = { ...snapshot.issues[0], id: 'DEMO-20', uuid: '00000000-0000-4000-8000-000000000020', title: 'Sprint parent', url: 'https://linear.example.test/demo-workspace/issue/DEMO-20', sprint, relations: [{ type: 'child', issueId: 'DEMO-21' }] };
   const child = { ...snapshot.issues[0], id: 'DEMO-21', uuid: '00000000-0000-4000-8000-000000000021', title: 'Sprint child', url: 'https://linear.example.test/demo-workspace/issue/DEMO-21', sprint, relations: [{ type: 'parent', issueId: 'DEMO-20' }] };
   const presentation = [parent, child].map(item => ({ issueId: item.id, label: 'Demo', icon: 'ticket', tone: 'blue', description: 'Synthetic', workstream: 'Synthetic Workstream' }));
   const html = renderShelf({ config, snapshot: { ...snapshot, issues: [parent, child] }, catalog: { ...catalog, presentation: { ...catalog.presentation, tickets: presentation } }, dri });
-  assert.equal((html.match(/class="sprint-badge"/g) ?? []).length, 1);
-  assert.match(html, /class="dri-secondary"><strong>Second DRI:<\/strong> Second<\/span><span class="sprint-badge"[^>]*>Sprint 26\.10\.S1<\/span>/);
+  assert.match(html, /class="ticket-ownership"><span[^>]*>Assignee: Demo<\/span><span>· Sprint: Sprint 26\.10\.S1<\/span><\/div>/);
+  assert.doesNotMatch(html, /First DRI|Second DRI|ticket-dri/);
 });
 
 test('C11 a parent-child family groups by the parent Sprint, not the child Sprint', () => {

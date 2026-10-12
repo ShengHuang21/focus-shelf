@@ -9,7 +9,7 @@ flowchart LR
   subgraph Repo[Focus Shelf checkout]
     Skills[Focus Shelf Skills]
     Writers[Validated snapshot and catalog writers]
-    DRI[Shared team DRI map]
+    DRI[Shared team DRI map<br/>retained, not shown on cards]
     Data[(Ignored local .focus-shelf/<br/>profile · snapshot · catalog · Memo · PR status · Archive)]
     Skills --> Writers
   end
@@ -29,7 +29,7 @@ flowchart LR
   GitHub -->|authorized PR and CI reads| Skills
   Writers -->|validated files| Data
   Data --> Server
-  DRI --> Server
+  DRI -.->|loaded as optional metadata| Server
   Page <-->|local page and API| Server
 ```
 
