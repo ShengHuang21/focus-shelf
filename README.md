@@ -14,20 +14,25 @@ No database or Docker. The local server serves the page and reads the Git-ignore
 - Authorized Linear connector/MCP access to read tickets, plus GitHub CLI or connector access for PR/CI details. Sign in through those tools as needed; never put credentials in this repository.
 - Know which Linear workspace and person this shelf is for. Codex can help confirm the exact owner ID and GitHub account before the first refresh.
 
-## Quick start
+## Quick start with Codex
 
-1. Clone this repository and open its folder in Codex:
+Paste this into Codex. It will clone the repository and set up your own shelf:
 
-   ```sh
-   git clone https://github.com/ShengHuang21/focus-shelf.git
-   cd focus-shelf
-   ```
+> Set up Focus Shelf for me from https://github.com/ShengHuang21/focus-shelf.git. Clone the repository if needed, then use its bundled `skills/focus-shelf/SKILL.md`, `skills/generate-focus-shelf-icon/SKILL.md`, and `CODEX_SNAPSHOT.md`—not personal defaults. Confirm my Linear workspace and owner, GitHub identity, timezone, and local URL. Keep my config and data in the Git-ignored `.focus-shelf/` folder. Perform the complete first refresh of my assigned, created, and followed tickets and related PRs; validate before saving. Start the local server and show me the page. Do not use demo data or guess my identity. If required Linear coverage is missing, leave existing data unchanged and tell me what is missing.
 
-2. Give Codex this one-time setup request:
+## Manual quick start (demo)
 
-   > Please set up Focus Shelf for me in this checkout. Use this repository's `skills/focus-shelf/SKILL.md`, `skills/generate-focus-shelf-icon/SKILL.md`, and `CODEX_SNAPSHOT.md`, not personal defaults. Confirm my Linear workspace and owner, GitHub identity, timezone, and local URL. Create my config in the Git-ignored `.focus-shelf/` folder, then perform the complete first refresh of my assigned, created, and followed tickets and their related PRs. Validate the data before saving, start the local server, and show me the page. Do not copy demo data or guess an identity; if required Linear coverage is missing, keep existing data unchanged; report any optional PR/CI gaps without guessing.
+```sh
+git clone https://github.com/ShengHuang21/focus-shelf.git
+cd focus-shelf
+mkdir -p .focus-shelf
+cp examples/config.example.json .focus-shelf/config.json
+cp examples/snapshot.example.json .focus-shelf/linear-latest.json
+cp examples/catalog.example.json .focus-shelf/catalog.json
+npm start
+```
 
-3. Open [http://localhost:8770](http://localhost:8770) after Codex starts the server. If you set it up manually instead, copy `examples/config.example.json` to `.focus-shelf/config.json`, replace the demo identity, then run `npm start`.
+Open [http://localhost:8770](http://localhost:8770). This runs a local demo only; it does not sign in to Linear or GitHub or fetch your tickets. To build your own shelf, use the Codex setup prompt above.
 
 ## Keeping it current
 
