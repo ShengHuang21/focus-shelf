@@ -28,7 +28,7 @@ test('ignored checkout data never enters the shareable file list', async t => {
 });
 
 test('C02 publication validator rejects external user data and unapproved files', async t => {
-  for (const name of ['config.json', 'linear-latest.json', 'catalog.json', 'dri.json', '.env', 'unexpected.txt']) {
+  for (const name of ['config.json', 'linear-latest.json', 'catalog.json', 'local-only.json', '.env', 'unexpected.txt']) {
     const root = await publication(t);
     await writeFile(join(root, name), '{}');
     await assert.rejects(validateShareableTree(root), /UNSHAREABLE_TREE/);

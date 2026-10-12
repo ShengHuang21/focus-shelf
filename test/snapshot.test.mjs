@@ -70,6 +70,10 @@ test('C04 ticket illustrations are Skill-produced plain presentation data', () =
   const ticket = { issueId: 'DEMO-1', label: 'Recovery', icon: 'sync', tone: 'blue', description: 'Synthetic recovery topic illustration' };
   const value = { ...catalog, presentation: { ...catalog.presentation, tickets: [ticket] } };
   assert.deepEqual(validateCatalog(value, config, snapshot), value);
+  const formerTicket = { ...ticket, workstream: 'Former optional metadata' };
+  const formerCatalog = { ...catalog, presentation: { ...catalog.presentation, tickets: [formerTicket] } };
+  assert.deepEqual(validateCatalog(formerCatalog, config, snapshot).presentation.tickets, [ticket]);
+  assert.equal(formerTicket.workstream, 'Former optional metadata');
   for (const invalid of [
     { ...ticket, icon: '<svg>' },
     { ...ticket, icon: 'unknown-icon' },

@@ -265,6 +265,19 @@ test('catalog publisher validates the current snapshot binding and writes atomic
   assert.deepEqual(JSON.parse(await readFile(join(home, 'catalog.json'), 'utf8')), catalogV2);
 });
 
+test('catalog publisher drops former optional presentation metadata without losing PRs', async t => {
+  const home = await temporaryHome(t);
+  await writeFile(join(home, 'config.json'), JSON.stringify(config));
+  await publishSnapshot({ home, input: snapshotV2 });
+  const clean = structuredClone(catalogV2);
+  clean.presentation.tickets = [{ issueId: 'DEMO-1', label: 'Recovery', icon: 'sync', tone: 'blue', description: 'Synthetic recovery topic' }];
+  const former = structuredClone(clean);
+  former.presentation.tickets[0].workstream = 'Former optional metadata';
+  await writeFile(join(home, 'catalog.json'), JSON.stringify(former));
+  assert.equal((await publishCatalog({ home, input: clean })).status, 'written');
+  assert.deepEqual(JSON.parse(await readFile(join(home, 'catalog.json'), 'utf8')), clean);
+});
+
 test('catalog publisher refuses to silently drop a previously published PR', async t => {
   const home = await temporaryHome(t);
   await writeFile(join(home, 'config.json'), JSON.stringify(config));

@@ -4,7 +4,7 @@ import { readFile, readdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { renderShelf, createReport, createReportHtml, createUpdateRequest, createDailyUpdateRequest, createButtonUpdateRequest, createMemoDrafts, formatAssigneeName, renderTicketIcon, displayedPRState, completedArchiveIds } from '../web/app.mjs';
-import { config, snapshot, catalog, dri, snapshotV2, catalogV2 } from './helpers.mjs';
+import { config, snapshot, catalog, snapshotV2, catalogV2 } from './helpers.mjs';
 
 const root = new URL('..', import.meta.url).pathname;
 
@@ -107,7 +107,7 @@ test('Child disclosure counts displayed immediate children, not all descendants'
   assert.match(renderShelf(state), /data-fold="children:DEMO-1"[^]*?<span>· 2 tasks<\/span>/);
   assert.match(renderShelf(state), /data-fold="children:DEMO-2"[^]*?<span>· 1 task<\/span>/);
   assert.match(renderShelf({ ...state, overlays: { archived: { 'DEMO-5': true } } }), /data-fold="children:DEMO-1"[^]*?<span>· 1 task · 1 archived<\/span>/);
-  for (const phrase of ['bundled focus-shelf', 'exhaust pagination', 'PR responsibility separately', 'private DRI map', 'PR continuity', 'leave the existing local files unchanged']) assert.ok(createUpdateRequest().includes(phrase));
+  for (const phrase of ['bundled focus-shelf', 'exhaust pagination', 'PR responsibility separately', 'PR continuity', 'leave the existing local files unchanged']) assert.ok(createUpdateRequest().includes(phrase));
 });
 
 test('Triage uses slate-blue while To Do keeps a distinct gold badge', async () => {
@@ -226,17 +226,16 @@ test('C11 rendering treats supplied titles and memo as text; report remains loca
   assert.match(report, /DEMO-1/);
 });
 
-test('C11 verified workstream does not replace the ticket assignee with team DRI', () => {
+test('C11 ticket presentation retains the Linear assignee', () => {
   const state = {
-    config, snapshot, dri,
-    catalog: { ...catalog, presentation: { ...catalog.presentation, tickets: [{ issueId: 'DEMO-1', label: 'Demo', icon: 'ticket', tone: 'blue', description: 'Synthetic', workstream: 'Synthetic Workstream' }] } },
+    config, snapshot,
+    catalog: { ...catalog, presentation: { ...catalog.presentation, tickets: [{ issueId: 'DEMO-1', label: 'Demo', icon: 'ticket', tone: 'blue', description: 'Synthetic' }] } },
   };
   const html = renderShelf(state);
   assert.match(html, /class="ticket-ownership"><span[^>]*>Assignee: Demo<\/span><\/div>/);
-  assert.doesNotMatch(html, /First DRI|Second DRI|ticket-dri/);
   const report = createReport(state);
   assert.match(report, /In Progress\n• DEMO-1 — Synthetic example/);
-  assert.doesNotMatch(report, /First DRI|Second DRI|Assignee/);
+  assert.doesNotMatch(report, /Assignee/);
 });
 
 test('C11 assignee display prefers the English name and omits the Japanese duplicate', () => {
@@ -404,12 +403,11 @@ test('C11 a created unassigned ticket has only the Unassigned ownership label', 
   assert.doesNotMatch(html, /ownership-created|ownership-arrow|Assigned to Unassigned/);
 });
 
-test('Unassigned uses a shared red badge even with workstream metadata', async () => {
+test('Unassigned uses a shared red badge with a topic thumbnail', async () => {
   const value = { ...snapshot, issues: [{ ...snapshot.issues[0], assignee: null }] };
-  const presentation = { ...catalog.presentation, tickets: [{ issueId: 'DEMO-1', label: 'Demo', icon: 'ticket', tone: 'blue', description: 'Synthetic', workstream: 'Synthetic Workstream' }] };
-  const html = renderShelf({ config, snapshot: value, catalog: { ...catalog, presentation }, dri });
+  const presentation = { ...catalog.presentation, tickets: [{ issueId: 'DEMO-1', label: 'Demo', icon: 'ticket', tone: 'blue', description: 'Synthetic' }] };
+  const html = renderShelf({ config, snapshot: value, catalog: { ...catalog, presentation } });
   assert.match(html, /class="ownership-unassigned">Unassigned<\/span>/);
-  assert.doesNotMatch(html, /First DRI|Second DRI|ticket-dri/);
   const css = await readFile(join(root, 'web/styles.css'), 'utf8');
   assert.match(css, /\.ownership-unassigned\s*\{[^}]*color:\s*#a12b24;[^}]*background:\s*#fff1f0/s);
 });
@@ -516,14 +514,13 @@ test('C11 Current work groups complete ticket families by observed Linear Sprint
   assert.doesNotMatch(html, /<h3>No Sprint<\/h3>/);
 });
 
-test('C11 parent Sprint and assignee remain visible with workstream metadata', () => {
+test('C11 parent Sprint and assignee remain visible with topic presentation', () => {
   const sprint = { name: 'Sprint 26.10.S1', startDate: '2026-10-01T00:00:00.000Z', endDate: '2026-10-20T23:59:59.000Z' };
   const parent = { ...snapshot.issues[0], id: 'DEMO-20', uuid: '00000000-0000-4000-8000-000000000020', title: 'Sprint parent', url: 'https://linear.example.test/demo-workspace/issue/DEMO-20', sprint, relations: [{ type: 'child', issueId: 'DEMO-21' }] };
   const child = { ...snapshot.issues[0], id: 'DEMO-21', uuid: '00000000-0000-4000-8000-000000000021', title: 'Sprint child', url: 'https://linear.example.test/demo-workspace/issue/DEMO-21', sprint, relations: [{ type: 'parent', issueId: 'DEMO-20' }] };
-  const presentation = [parent, child].map(item => ({ issueId: item.id, label: 'Demo', icon: 'ticket', tone: 'blue', description: 'Synthetic', workstream: 'Synthetic Workstream' }));
-  const html = renderShelf({ config, snapshot: { ...snapshot, issues: [parent, child] }, catalog: { ...catalog, presentation: { ...catalog.presentation, tickets: presentation } }, dri });
+  const presentation = [parent, child].map(item => ({ issueId: item.id, label: 'Demo', icon: 'ticket', tone: 'blue', description: 'Synthetic' }));
+  const html = renderShelf({ config, snapshot: { ...snapshot, issues: [parent, child] }, catalog: { ...catalog, presentation: { ...catalog.presentation, tickets: presentation } } });
   assert.match(html, /class="ticket-ownership"><span[^>]*>Assignee: Demo<\/span><span>· Sprint: Sprint 26\.10\.S1<\/span><\/div>/);
-  assert.doesNotMatch(html, /First DRI|Second DRI|ticket-dri/);
 });
 
 test('C11 a parent-child family groups by the parent Sprint, not the child Sprint', () => {
@@ -575,7 +572,7 @@ test('C11 rendering escapes memo and removes unsafe link protocols', () => {
 
 test('C11 every approved shelf link delegates to the local Chrome opener', () => {
   const withPR = { ...catalog, pullRequests: [{ issueId: 'DEMO-1', repository: 'example/one', number: 7, url: 'https://github.com/example/one/pull/7', baseBranch: 'main', state: 'open', purpose: 'Synthetic change', observedAt: snapshot.generatedAt }] };
-  const html = renderShelf({ config, snapshot, catalog: withPR, dri, overlays: {}, readOnly: true });
+  const html = renderShelf({ config, snapshot, catalog: withPR, overlays: {}, readOnly: true });
   assert.match(html, new RegExp(`data-open-in-chrome="${snapshot.issues[0].url.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}"`));
   assert.match(html, /data-open-in-chrome="https:\/\/github\.com\/example\/one\/pull\/7"/);
   assert.doesNotMatch(html, /target="_blank"/);
@@ -741,15 +738,15 @@ test('C02/C12 read-only --list emits the exact publication file list without exc
   assert.equal(result.status, 0);
   const files = JSON.parse(result.stdout);
   assert.ok(Array.isArray(files));
-  assert.equal(files.length, 39);
+  assert.equal(files.length, 36);
   assert.deepEqual(files, [...files].sort());
   assert.equal(new Set(files).size, files.length);
   for (const file of files) {
     assert.doesNotMatch(file, /^(?:work|\.git|\.code-review-graph|\.focus-shelf|node_modules)\//);
-    assert.ok(!['config.json', 'linear-latest.json', 'catalog.json', 'dri.json'].includes(file));
+    assert.ok(!['config.json', 'linear-latest.json', 'catalog.json', 'local-only.json'].includes(file));
     await readFile(join(root, file));
   }
-  for (const required of ['README.md', 'CODEX_SNAPSHOT.md', 'config/team-dri.json', 'web/icons/relation-child.svg', 'lib/dri.mjs', 'lib/archive.mjs', 'lib/shareability.mjs', 'scripts/write-codex-catalog.mjs', 'scripts/validate-shareable.mjs', 'skills/focus-shelf/SKILL.md', 'skills/generate-focus-shelf-icon/SKILL.md', 'examples/dri.example.json', 'test/archive.test.mjs', 'test/snapshot-v2.test.mjs']) assert.ok(files.includes(required));
+  for (const required of ['README.md', 'CODEX_SNAPSHOT.md', 'web/icons/relation-child.svg', 'lib/archive.mjs', 'lib/shareability.mjs', 'scripts/write-codex-catalog.mjs', 'scripts/validate-shareable.mjs', 'skills/focus-shelf/SKILL.md', 'skills/generate-focus-shelf-icon/SKILL.md', 'test/archive.test.mjs', 'test/snapshot-v2.test.mjs']) assert.ok(files.includes(required));
 });
 
 test('C02 shareable publication tree contains no private identifiers or data payloads', async () => {
@@ -765,7 +762,7 @@ test('C02 shareable publication tree contains no private identifiers or data pay
         for (const forbidden of ['SYNTHETIC_' + 'PUBLICATION_POLLUTION']) {
           if (content.toLowerCase().includes(forbidden.toLowerCase())) violations.push(path);
         }
-        assert.ok(!['config.json', 'linear-latest.json', 'catalog.json', 'dri.json'].includes(entry.name), `external user data in publication tree: ${path}`);
+        assert.ok(!['config.json', 'linear-latest.json', 'catalog.json', 'local-only.json'].includes(entry.name), `external user data in publication tree: ${path}`);
       }
     }
   }

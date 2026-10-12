@@ -33,12 +33,6 @@ export const catalog = {
   presentation: { repositories: [], tickets: [], report: { excludedIssueIds: [], familySummaries: [] } },
 };
 
-export const dri = {
-  schemaVersion: 1,
-  source: { kind: 'manual-excel-import', observedAt: snapshot.generatedAt, workbook: 'Synthetic ownership map.xlsx', sheet: 'Workstream', range: 'A5:E5' },
-  workstreams: [{ domain: 'Synthetic Domain', workstream: 'Synthetic Workstream', firstDri: 'First Demo Owner', secondDri: 'Second Demo Owner', featureScope: 'Synthetic feature scope' }],
-};
-
 // Entirely synthetic three-level hierarchy, overlapping seeds and a followed
 // ticket assigned to someone else. No real workspace/account evidence.
 const demoIssue = (n, assignee, relations, type = 'started') => ({
