@@ -13,19 +13,26 @@ test('Update prompt preserves Sprint evidence without redefining template groupi
   for (const phrase of ['group by Sprint only inside Current work and Completed', 'Upcoming and Backlog group directly into Assigned to me, Assigned to others, and Unassigned', 'newest Sprint first', 'verified creation month', 'a past Sprint does not mean Done']) assert.ok(request.includes(phrase));
 });
 
-test('Daily Update prompt rechecks Sprint membership for every retained issue, including No Sprint', () => {
+test('Daily Update prompt delegates Sprint rules to the bundled contract without embedding dates', async () => {
   const request = createDailyUpdateRequest('2026-10-10T00:00:00.000Z');
-  assert.match(request, /re-verify current Sprint membership for every retained issue on each daily refresh/);
-  assert.match(request, /including tickets whose prior Sprint was null/);
-  assert.match(request, /complete Sprint-membership coverage.*do not claim it is current or publish a partial refresh/s);
+  assert.match(request, /skills\/focus-shelf\/SKILL\.md/);
+  assert.match(request, /CODEX_SNAPSHOT\.md/);
+  assert.match(request, /last validated local snapshot\/catalog pair \(24-hour overlap\)/);
+  assert.doesNotMatch(request, /2026-10-10|2026-10-09/);
+  assert.ok(request.length < 1000);
+  const contract = await readFile(join(root, 'CODEX_SNAPSHOT.md'), 'utf8');
+  assert.match(contract, /Sprint membership for every retained issue on every daily refresh/);
+  assert.match(contract, /including those previously without a Sprint/);
 });
 
-test('Update button uses the dated incremental contract and full refresh names the actual local home', () => {
+test('Update button uses the short incremental contract and full refresh names the actual local home', () => {
   const request = createButtonUpdateRequest(snapshotV2);
-  assert.match(request, /daily incremental Focus Shelf refresh/);
+  assert.match(request, /daily incremental refresh/);
   assert.match(request, /24-hour overlap/);
-  assert.match(request, /every previously catalogued PR, including Closed PRs/);
-  assert.match(request, /even when those Linear tickets did not change/);
+  assert.match(request, /new PRs even for unchanged retained tickets/);
+  assert.match(request, /every catalogued PR, including Closed PRs/);
+  assert.match(request, /Validate coverage, continuity, and the complete pair before saving/);
+  assert.doesNotMatch(request, /20\d{2}-\d{2}-\d{2}/);
   assert.equal(createButtonUpdateRequest(null), createUpdateRequest());
   assert.match(createUpdateRequest(), /resolved local data home.*FOCUS_SHELF_HOME.*\.focus-shelf\//);
   assert.doesNotMatch(createUpdateRequest(), /external home/);
