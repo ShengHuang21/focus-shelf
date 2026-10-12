@@ -46,6 +46,7 @@ nav { display: flex; flex-wrap: wrap; gap: 8px; min-width: 0; }
 .writer-notice button { padding: 3px 7px; font-size: .68rem; }
 .local-status { color: var(--muted); white-space: nowrap; }
 .local-status.error { color: var(--red); }
+.pr-data-notice { padding: 7px 9px; border: 1px solid #e8c875; border-radius: 7px; color: #725a00; background: #fffae9; font-size: .7rem; }
 .focus-group { display: grid; gap: 9px; }
 .focus-group > h2 { display: flex; align-items: center; gap: 8px; margin: 0; padding: 9px 12px; border-radius: 8px; background: var(--group); font-size: .88rem; line-height: 1; }
 .focus-group > summary { margin: 0; padding: 9px 12px; border-radius: 8px; background: var(--group); cursor: pointer; font-size: .88rem; font-weight: 700; line-height: 1; }
@@ -139,6 +140,7 @@ nav { display: flex; flex-wrap: wrap; gap: 8px; min-width: 0; }
 .memo-row textarea { flex: 1 1 180px; min-width: 0; min-height: 29px; max-height: 88px; padding: 4px 7px; border: 0; border-bottom: 1px solid var(--line); border-radius: 0; resize: vertical; color: #27282d; background: transparent; font-size: .73rem; line-height: 1.4; }
 .memo-row textarea:focus { outline: 2px solid #9eb7ff; outline-offset: 1px; background: #fff; }
 .ticket-prs { display: grid; gap: 5px; margin-top: 8px; padding-left: 38px; }
+.pr-coverage-note { color: #825000; font-size: .67rem; }
 .ticket-pr-entry { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 7px; min-width: 0; font-size: .72rem; }
 .repo-badge, .branch-badge { padding: 2px 7px; border: 1px solid currentColor; border-radius: 5px; font-weight: 700; }
 .repo-neutral { color: #515564; background: #f3f4f6; }

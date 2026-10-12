@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFile, readdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
-import { renderShelf, createReport, createReportHtml, createUpdateRequest, createDailyUpdateRequest, formatAssigneeName, formatDriName, renderTicketIcon, displayedPRState, completedArchiveIds } from '../web/app.mjs';
+import { renderShelf, createReport, createReportHtml, createUpdateRequest, createDailyUpdateRequest, createButtonUpdateRequest, createMemoDrafts, formatAssigneeName, formatDriName, renderTicketIcon, displayedPRState, completedArchiveIds } from '../web/app.mjs';
 import { config, snapshot, catalog, dri, snapshotV2, catalogV2 } from './helpers.mjs';
 
 const root = new URL('..', import.meta.url).pathname;
@@ -18,6 +18,46 @@ test('Daily Update prompt rechecks Sprint membership for every retained issue, i
   assert.match(request, /re-verify current Sprint membership for every retained issue on each daily refresh/);
   assert.match(request, /including tickets whose prior Sprint was null/);
   assert.match(request, /complete Sprint-membership coverage.*do not claim it is current or publish a partial refresh/s);
+});
+
+test('Update button uses the dated incremental contract and full refresh names the actual local home', () => {
+  const request = createButtonUpdateRequest(snapshotV2);
+  assert.match(request, /daily incremental Focus Shelf refresh/);
+  assert.match(request, /24-hour overlap/);
+  assert.match(request, /every previously catalogued PR, including Closed PRs/);
+  assert.match(request, /even when those Linear tickets did not change/);
+  assert.equal(createButtonUpdateRequest(null), createUpdateRequest());
+  assert.match(createUpdateRequest(), /resolved local data home.*FOCUS_SHELF_HOME.*\.focus-shelf\//);
+  assert.doesNotMatch(createUpdateRequest(), /external home/);
+});
+
+test('Memo draft survives a redraw and an older save acknowledgement', () => {
+  const drafts = createMemoDrafts();
+  const submitted = drafts.input('DEMO-1', 'first text');
+  assert.equal(drafts.overlay({ 'DEMO-1': 'old file text' })['DEMO-1'], 'first text');
+  drafts.input('DEMO-1', 'newer text');
+  assert.equal(drafts.acknowledge('DEMO-1', submitted), false);
+  assert.equal(drafts.overlay({ 'DEMO-1': 'first text' })['DEMO-1'], 'newer text');
+  const latest = drafts.get('DEMO-1');
+  assert.equal(drafts.acknowledge('DEMO-1', latest), true);
+  assert.equal(drafts.overlay({ 'DEMO-1': 'newer text' })['DEMO-1'], 'newer text');
+});
+
+test('Missing or incomplete PR evidence is not reported as a definite empty review list', () => {
+  const missing = { config, snapshot: snapshotV2, catalog: null };
+  assert.match(renderShelf(missing), /PR data not loaded · review status cannot be determined/);
+  assert.match(createReport(missing), /Ready for Review\n• PR review status not fully checked\./);
+  assert.doesNotMatch(createReport(missing).split('\n\n')[0], /None/);
+  assert.match(createReportHtml(missing), /<li>PR review status not fully checked\.<\/li>/);
+
+  const incomplete = { ...catalogV2, coverage: catalogV2.coverage.map(item => item.issueId === 'DEMO-1' ? { ...item, pr: 'unavailable', ci: 'unavailable' } : item) };
+  assert.match(renderShelf({ config, snapshot: snapshotV2, catalog: incomplete }), /PR list not fully checked/);
+  assert.match(createReport({ snapshot: snapshotV2, catalog: incomplete }), /PR review status not fully checked/);
+
+  assert.match(renderShelf({ config, snapshot: snapshotV2, catalog: catalogV2 }), /PR review status not fully checked/);
+
+  const completeEmpty = { ...catalogV2, pullRequests: [], ciObservations: [], coverage: catalogV2.coverage.map(item => ({ ...item, ci: 'not-applicable' })) };
+  assert.match(createReport({ snapshot: snapshotV2, catalog: completeEmpty }), /Ready for Review\n• None\./);
 });
 
 test('Upcoming groups directly by ownership while retaining To Do/Triage status and child trees', () => {
