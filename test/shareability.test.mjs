@@ -682,7 +682,7 @@ test('C02/C12 read-only --list emits the exact publication file list without exc
   assert.deepEqual(files, [...files].sort());
   assert.equal(new Set(files).size, files.length);
   for (const file of files) {
-    assert.doesNotMatch(file, /^(?:work|\.git|node_modules)\//);
+    assert.doesNotMatch(file, /^(?:work|\.git|\.code-review-graph|node_modules)\//);
     assert.ok(!['config.json', 'linear-latest.json', 'catalog.json', 'dri.json'].includes(file));
     await readFile(join(root, file));
   }
@@ -693,7 +693,7 @@ test('C02 shareable publication tree contains no private identifiers or data pay
   const violations = [];
   async function scan(directory) {
     for (const entry of await readdir(directory, { withFileTypes: true })) {
-      if (['.git', 'work', 'node_modules'].includes(entry.name)) continue;
+      if (['.git', '.code-review-graph', 'work', 'node_modules'].includes(entry.name)) continue;
       const path = join(directory, entry.name);
       if (entry.isDirectory()) await scan(path);
       else {

@@ -508,10 +508,20 @@ if (typeof document !== 'undefined') {
     }; });
     main.querySelectorAll('[data-open-in-chrome]').forEach(node => { node.onclick = async event => {
       event.preventDefault();
+      const showLinkError = message => {
+        const status = main.querySelector('.local-status') ?? main.querySelector('.writer-notice');
+        status.hidden = false;
+        status.textContent = message;
+        status.classList.add('error');
+      };
       try {
         const response = await fetch('/api/open-in-chrome', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url: node.dataset.openInChrome }) });
-        if (!response.ok) throw new Error('Chrome open failed');
-      } catch { errors(); }
+        if (response.status === 403) return showLinkError('Link not opened · the local service did not approve it. Reload or update the shelf.');
+        if (response.status === 502) return showLinkError('Link not opened · Chrome could not open it. Check Chrome and try again.');
+        if (!response.ok) return showLinkError('Link not opened · the local Focus Shelf service rejected the request. Reload the page and try again.');
+      } catch {
+        showLinkError('Link not opened · the local Focus Shelf service is unavailable. Restart it at this page’s address and reload.');
+      }
     }; });
     main.querySelector('#generate-slack-report').onclick = () => {
       const panel = main.querySelector('#slack-report-panel');
