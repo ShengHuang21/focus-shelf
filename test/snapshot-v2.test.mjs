@@ -293,6 +293,21 @@ test('catalog publisher refuses to silently drop a previously published PR', asy
   await assert.rejects(publishCatalog({ home, input: missing, allowPRRemovals: ['demo/repository#99'] }), /UNUSED_PR_REMOVAL/);
 });
 
+test('catalog publisher refuses to silently drop a verified PR creator', async t => {
+  const home = await temporaryHome(t);
+  await writeFile(join(home, 'config.json'), JSON.stringify(config));
+  await publishSnapshot({ home, input: snapshotV2 });
+  const attributed = structuredClone(catalogV2);
+  attributed.pullRequests[0].creator = { login: 'alex-demo', displayName: 'Alex', isProfileOwner: false };
+  await publishCatalog({ home, input: attributed });
+  await assert.rejects(publishCatalog({ home, input: catalogV2 }), /PR_CREATOR_CONTINUITY_INCOMPLETE: demo\/repository#42/);
+  assert.deepEqual(JSON.parse(await readFile(join(home, 'catalog.json'), 'utf8')), attributed);
+  const nextSnapshot = { ...structuredClone(snapshotV2), generatedAt: '2026-10-10T00:00:00.000Z' };
+  await publishSnapshot({ home, input: nextSnapshot });
+  const nextCatalog = { ...structuredClone(catalogV2), snapshotGeneratedAt: nextSnapshot.generatedAt };
+  await assert.rejects(publishCatalog({ home, input: nextCatalog }), /PR_CREATOR_CONTINUITY_INCOMPLETE: demo\/repository#42/);
+});
+
 test('PR continuity guard survives a new snapshot timestamp', async t => {
   const home = await temporaryHome(t);
   await writeFile(join(home, 'config.json'), JSON.stringify(config));
