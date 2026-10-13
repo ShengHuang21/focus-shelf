@@ -29,17 +29,6 @@ button { padding: 6px 10px; cursor: pointer; font-weight: 650; }
 button:hover { background: var(--group); }
 button:disabled, select:disabled, textarea:disabled { cursor: default; opacity: .55; }
 a { color: var(--link); text-underline-offset: 2px; }
-.shelf-toolbar { display: flex; min-width: 0; align-items: center; flex-wrap: wrap; gap: 9px; }
-.update-action { min-height: 38px; display: inline-flex; align-items: center; gap: 7px; padding: 7px 12px; border-color: #28447f; color: #fff; background: var(--blue); box-shadow: 0 1px 2px #1f2e551f; }
-.update-action:hover { background: #2b417d; }
-.update-action:active { background: #23366a; }
-.update-action:focus-visible { outline: 3px solid #aec4ff; outline-offset: 2px; }
-.update-full-action { min-height: 38px; padding: 7px 11px; border-color: var(--line); color: var(--muted); background: var(--surface); font-size: .78rem; }
-.update-full-action:hover { color: var(--ink); border-color: var(--muted); }
-.update-full-action:focus-visible { outline: 3px solid #aec4ff; outline-offset: 2px; }
-.update-action svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
-.update-status { min-width: 0; color: var(--muted); font-size: .69rem; line-height: 1.35; }
-#focus-update-fallback { flex: 1 1 100%; min-height: 74px; padding: 8px; border: 1px solid var(--line); border-radius: 7px; background: var(--surface); font-size: .7rem; line-height: 1.4; resize: vertical; }
 nav { display: flex; flex-wrap: wrap; gap: 8px; min-width: 0; }
 .pin-link { padding: 3px 7px; border-radius: 6px; color: #515564; background: var(--group); font-size: .72rem; font-weight: 650; text-decoration: none; }
 .writer-notice { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 7px 9px; border: 1px solid #e8c875; border-radius: 7px; color: #725a00; background: #fffae9; font-size: .7rem; }

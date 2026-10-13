@@ -445,9 +445,8 @@ export function renderShelf({ config, snapshot, catalog, overlays = {}, readOnly
   const writerNotice = readOnly
     ? `<div class="writer-notice"><span>Read-only · ${escape(readOnlyReason || 'Editing unavailable')}</span><button id="takeover">Use this window</button></div>`
     : '<div class="local-status" hidden aria-live="polite"></div>';
-  const updateControl = '<header class="shelf-toolbar"><button id="request-focus-update" class="update-action" type="button" aria-describedby="focus-update-status" title="Copy a daily incremental Focus Shelf refresh request for Codex"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M20 7v5h-5M4 17v-5h5M6.1 8A7 7 0 0 1 18 6l2 1M17.9 16A7 7 0 0 1 6 18l-2-1"/></svg><span>Update</span></button><button id="request-focus-full-update" class="update-full-action" type="button" aria-describedby="focus-update-status" title="Copy a complete Focus Shelf reconciliation request for Codex">Full refresh</button><span id="focus-update-status" class="update-status" aria-live="polite"></span><textarea id="focus-update-fallback" readonly hidden aria-label="Focus Shelf update request"></textarea></header>';
   const slackReport = '<section class="slack-report"><button id="generate-slack-report">Generate Slack Report</button><div id="slack-report-panel" hidden><div id="slack-report-preview" class="slack-report-preview"></div><textarea id="slack-report-text" readonly hidden></textarea><div class="slack-report-actions"><button id="copy-slack-report">Copy Report</button><span id="slack-report-status" aria-live="polite"></span></div></div></section>';
-  return `${updateControl}${navigation}${prNotice}${writerNotice}${renderedGroups || empty}${archive}${slackReport}`;
+  return `${navigation}${prNotice}${writerNotice}${renderedGroups || empty}${archive}${slackReport}`;
 }
 
 const reportRepositoryLabel = (pr, catalog) => catalog?.presentation?.repositories?.find(item => item.repository === pr.repository)?.label
@@ -600,22 +599,6 @@ if (typeof document !== 'undefined') {
       main.querySelector(`[data-memo="${CSS.escape(id)}"]`)?.closest('.ticket-card')?.scrollIntoView({ block: 'center' });
     }; });
     main.querySelector('#takeover')?.addEventListener('click', async () => { await client.acquireWriter(); render(); });
-    const copyUpdatePrompt = async request => {
-      const status = main.querySelector('#focus-update-status');
-      const fallback = main.querySelector('#focus-update-fallback');
-      try {
-        await navigator.clipboard.writeText(request);
-        status.textContent = 'Copied — paste into Codex';
-        fallback.hidden = true;
-      } catch {
-        fallback.value = request;
-        fallback.hidden = false;
-        fallback.select();
-        status.textContent = 'Copy this request to Codex';
-      }
-    };
-    main.querySelector('#request-focus-update').onclick = () => copyUpdatePrompt(createButtonUpdateRequest(shelf.snapshot));
-    main.querySelector('#request-focus-full-update').onclick = () => copyUpdatePrompt(createUpdateRequest());
     main.querySelectorAll('[data-memo]').forEach(node => {
       node.oninput = () => {
         memoDrafts.input(node.dataset.memo, node.value);

@@ -25,7 +25,7 @@ test('Daily Update prompt delegates Sprint rules to the bundled contract without
   assert.match(contract, /including those previously without a Sprint/);
 });
 
-test('Update button uses the short incremental contract and full refresh names the actual local home', () => {
+test('Legacy refresh request helpers retain the existing contract', () => {
   const request = createButtonUpdateRequest(snapshotV2);
   assert.match(request, /daily incremental refresh/);
   assert.match(request, /24-hour overlap/);
@@ -271,20 +271,10 @@ test('C11 shared UI uses the canonical Focus Shelf hierarchy and compact visual 
   assert.doesNotMatch(html, /Saved webpages|LOCAL WORKSPACE|Show archived/);
 });
 
-test('C11 top Update control prepares an explicit Codex refresh request without claiming external sync', () => {
+test('C11 shelf does not offer a misleading Update button', () => {
   const html = renderShelf({ config, snapshot, catalog });
-  assert.match(html, /^<header class="shelf-toolbar">/);
-  assert.match(html, /id="request-focus-update"[^>]*>[^]*<span>Update<\/span>/);
-  assert.match(html, /id="focus-update-status"[^>]*aria-live="polite"/);
-  assert.match(html, /id="focus-update-fallback"[^>]*readonly hidden/);
-  const request = createUpdateRequest();
-  assert.match(request, /Please update my Focus Shelf/);
-  assert.match(request, /all issues I created \(including reassigned and unassigned issues\)/);
-  assert.match(request, /exact associated PRs/);
-  assert.match(request, /Preserve local-file Memo and local-file Archive/);
-  assert.match(request, /Release target policy failure as an attention warning/);
-  assert.match(request, /Reload the same local page and verify rendered results when available/);
-  assert.doesNotMatch(html, /Update complete|Synchronized|Synced/);
+  assert.doesNotMatch(html, /request-focus-update|request-focus-full-update|focus-update-status|focus-update-fallback/);
+  assert.match(html, /Generate Slack Report/);
 });
 
 test('C11 archiving a parent keeps its child tree together in Archive', () => {
@@ -707,10 +697,11 @@ test('C12 README shows architecture, setup, and request-driven updates', async (
   const readme = await readFile(join(root, 'README.md'), 'utf8');
   const skill = await readFile(join(root, 'skills/focus-shelf/SKILL.md'), 'utf8');
   assert.match(readme, /## Architecture[\s\S]*docs\/architecture\.svg[\s\S]*## Before you start[\s\S]*## Quick start[\s\S]*## Keeping it current/);
-  assert.match(readme, /skills\/focus-shelf\/SKILL\.md/);
+  assert.match(readme, /bundled focus-shelf and generate-focus-shelf-icon Skills/);
+  assert.doesNotMatch(readme, /Update button/);
   assert.match(readme, /Update ELT-536 in my Focus Shelf/);
   assert.match(readme, /npm start/);
-  assert.match(readme, /authorized Linear connector\/MCP access/i);
+  assert.match(readme, /authorized Linear connector\/MCP/i);
   assert.match(skill, /FOCUS_SHELF_HOME/);
   assert.match(skill, /localhost:8770/);
   assert.match(skill, /authoriz/i);
